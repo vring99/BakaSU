@@ -110,7 +110,7 @@ python scripts/private_manager.py build --name com.example.bakasupro
 本仓库的 Actions 编译管理器和 LKM；GKI 的完整内核镜像继续由你的 GKI 内核仓库编译。
 推荐直接使用本分支的 kernel 源码，签名及下文的 SUSFS 适配均已内置，不需要额外补丁。
 仅为兼容仍使用官方 **35229** 的外部构建，Actions 保留导出
-`gki-manager-signature.patch`，包含签名和原生 SUSFS 适配所需文件。
+`gki-manager-signature.patch`，包含签名、信息查询权限和原生 SUSFS 适配所需文件。
 仓库内的旧副本 `docs/patches/gki-manager-signature-35229.patch` 只包含原有签名改动，
 不代表当前原生 SUSFS 接入代码；两者不能混用。
 应在 BakaSU 源码拉取后、真正编译前应用（命令在 BakaSU 源码根目录运行）：
@@ -154,6 +154,35 @@ LKM 流程对应 `CONFIG_KSU=m`，证书校验代码相同。不设置固定 `KS
 
 只安装本管理器而未重编 GKI/LKM，不会改变设备上旧内核接受的管理器签名。
 源码检查、管理器构建均不代替真实 GKI/LKM 编译、刷入和设备验证。
+
+### 驱动入口与信息查询权限
+
+申请普通驱动 fd，以及 `GET_INFO`、`GET_INFO_LEGACY`、`GET_FULL_VERSION`、
+`CHECK_SAFEMODE` 四条查询，统一要求调用者属于以下任一情况：
+
+- 内核已登记的管理器（正常安装路径校验 Pro 私有证书）。
+- 当前 UID 为 0，包括启动阶段和 ksud 的 root 调用。
+- 当前 UID 具有有效 su 授权。
+
+未授权 shell 和其他未授权进程无法通过上述入口申请 fd。即使持有以前取得、继承或
+收到的 fd，四条查询也会重新检查当前身份；撤销授权后，后续查询返回 `EPERM`。
+这不撤回已经读出的信息，也不会终止已经获得 root 的进程。
+
+调试编译不再默认放行 shell。管理员显式设置的 `allow_shell=1` 仍然有效；
+该参数会独立于管理器的普通授权名单放行 UID 2000，包括 su 授权。因此使用该参数时，
+仅在管理器中撤销 shell 授权不足以阻止 shell，需要取消启动/模块参数并重新加载或重启。
+
+root 配置的动态管理器，以及启用 Toolkit/Debug 后由管理员登记的管理器，仍属于
+内核认可的管理器；它们不是未知 APK 自动通过证书验证。管理器身份按 appId 判断，
+同一 appId 的其他 Android 用户实例也会被认可。
+
+su 会话 fd 仅保留原有的 `GET_WRAPPER_FD`、`DISABLE_ESCAPE_TO_ROOT` 两条特殊许可，
+不额外放行上述四条查询或授予管理权限。原有配置、授权名单等命令继续使用各自的
+管理器/root 权限检查。
+
+限制同时用于本分支的 GKI/LKM 源码和导出的 GKI 补丁；更新管理器 APK 本身不会改变
+旧内核行为。主机回归测试执行真实权限函数、命令表和入口函数，模拟内核身份及底层操作，
+不能替代重编内核和刷入后的真机验证，也不保证屏蔽其他检测途径。
 
 修改上述内核认证文件后，在本仓库重新生成补丁：
 

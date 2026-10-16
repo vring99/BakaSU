@@ -124,7 +124,14 @@ int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd, void __user 
 
     // Check if this is a request to install KSU fd
     if (magic2 == KSU_INSTALL_MAGIC2) {
-        int fd = ksu_install_fd();
+        int fd;
+
+        // Keep this check at the userspace entry: manager setup also installs
+        // an fd internally while zygote is changing credentials.
+        if (!allowed_for_driver())
+            return -EPERM;
+
+        fd = ksu_install_fd();
         pr_info("[%d] install ksu fd: %d\n", current->pid, fd);
 
         if (copy_to_user((int __user *)*arg, &fd, sizeof(fd))) {

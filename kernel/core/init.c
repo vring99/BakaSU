@@ -148,11 +148,9 @@ void setup_ksu_cred(void)
     setup_ksu_cred_session_keyring();
 }
 
-#ifdef CONFIG_KSU_DEBUG
-bool allow_shell = true;
-#else
+// Debug logging must not implicitly authorize shell. The administrator can
+// still opt in explicitly with the allow_shell module/boot parameter.
 bool allow_shell = false;
-#endif
 
 bool ksu_no_custom_rc = false;
 module_param_named(norc, ksu_no_custom_rc, bool, 0);

@@ -1221,13 +1221,13 @@ static const struct ksu_ioctl_cmd_map ksu_ioctl_handlers[] = {
         .cmd = KSU_IOCTL_GET_INFO, 
         .name = "GET_INFO", 
         .handler = do_get_info, 
-        .perm_check = always_allow 
+        .perm_check = allowed_for_driver
     },
     {
         .cmd = KSU_IOCTL_GET_INFO_LEGACY,
         .name = "GET_INFO_LEGACY",
         .handler = do_get_info_legacy,
-        .perm_check = always_allow
+        .perm_check = allowed_for_driver
     },
     { 
         .cmd = KSU_IOCTL_REPORT_EVENT, 
@@ -1245,7 +1245,7 @@ static const struct ksu_ioctl_cmd_map ksu_ioctl_handlers[] = {
         .cmd = KSU_IOCTL_CHECK_SAFEMODE,
         .name = "CHECK_SAFEMODE",
         .handler = do_check_safemode,
-        .perm_check = always_allow 
+        .perm_check = allowed_for_driver
     },
     { 
         .cmd = KSU_IOCTL_GET_ALLOW_LIST,
@@ -1362,7 +1362,7 @@ static const struct ksu_ioctl_cmd_map ksu_ioctl_handlers[] = {
         .cmd = KSU_IOCTL_GET_FULL_VERSION,
         .name = "GET_FULL_VERSION",
         .handler = do_get_full_version,
-        .perm_check = always_allow 
+        .perm_check = allowed_for_driver
     },
     { 
         .cmd = KSU_IOCTL_HOOK_TYPE, 

@@ -24,6 +24,11 @@ GKI_FILES = [
     "kernel/Kconfig",
     "kernel/manager/apk_sign.c",
     "kernel/manager/manager_sign.h",
+    "kernel/core/init.c",
+    "kernel/supercall/internal.h",
+    "kernel/supercall/perm.c",
+    "kernel/supercall/supercall.c",
+    "kernel/supercall/dispatch.c",
     "kernel/feature/selinux_hide_susfs.c",
     "kernel/tools/susfs_compat.mk",
 ]
