@@ -19,7 +19,14 @@ import zipfile
 ROOT = Path(__file__).resolve().parent.parent
 HEADER = ROOT / "kernel/manager/manager_sign.h"
 GKI_BASE = "d7260ca1e5c128061122924d0d48754e361e135c"
-GKI_FILES = ["kernel/Kbuild", "kernel/Kconfig", "kernel/manager/apk_sign.c", "kernel/manager/manager_sign.h"]
+GKI_FILES = [
+    "kernel/Kbuild",
+    "kernel/Kconfig",
+    "kernel/manager/apk_sign.c",
+    "kernel/manager/manager_sign.h",
+    "kernel/feature/selinux_hide_susfs.c",
+    "kernel/tools/susfs_compat.mk",
+]
 SIGNING_PROPERTIES = ROOT / "manager/private-signing/signing.properties"
 PACKAGE_PATTERN = re.compile(r"[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+")
 

@@ -6,7 +6,11 @@ kernelsu-objs += feature/sucompat.o
 kernelsu-objs += feature/kernel_umount.o
 kernelsu-objs += feature/sulog.o
 kernelsu-objs += feature/adb_root.o
+ifeq ($(CONFIG_KSU_SUSFS),y)
+kernelsu-objs += feature/selinux_hide_susfs.o
+else
 kernelsu-objs += feature/selinux_hide.o
+endif
 kernelsu-objs += feature/module_load_filter.o
 kernelsu-objs += hook/setuid_hook.o
 
