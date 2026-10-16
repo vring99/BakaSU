@@ -50,17 +50,17 @@ setup_kernelsu() {
 	echo "[+] Setting up KernelSU..."
 	# Clone the repository and rename it to KernelSU
 	if [ ! -d "$GKI_ROOT/KernelSU" ]; then
-		git clone https://github.com/Baka-SU/BakaSU KernelSU
+		git clone --branch codex/bakasu-pro-latest https://github.com/vring99/BakaSU KernelSU
 		echo "[+] Repository cloned."
 	fi
 	cd "$GKI_ROOT/KernelSU"
 	git stash && echo "[-] Stashed current changes."
 	if [ "$(git status | grep -Po 'v\d+(\.\d+)*' | head -n1)" ]; then
-		git checkout main && echo "[-] Switched to main branch."
+		git checkout codex/bakasu-pro-latest && echo "[-] Switched to private branch."
 	fi
 	git pull && echo "[+] Repository updated."
 	if [ -z "${1-}" ]; then
-		git checkout main && echo "[-] Checked out main branch."
+		git checkout codex/bakasu-pro-latest && echo "[-] Checked out private branch."
 	else
 		git checkout "$1" && echo "[-] Checked out $1." || echo "[-] Checkout default branch"
 	fi
@@ -99,7 +99,7 @@ setup_submodule() {
 	fi
 
     echo '[+] Setting up KernelSU as submodule...'
-    git submodule add https://github.com/Baka-SU/BakaSU KernelSU || echo '[!] Failed to add KernelSU as a submodule.'
+    git submodule add -b codex/bakasu-pro-latest https://github.com/vring99/BakaSU KernelSU || echo '[!] Failed to add KernelSU as a submodule.'
     echo '[+] Done.'
 }
 

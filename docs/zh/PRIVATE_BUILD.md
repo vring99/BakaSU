@@ -108,10 +108,11 @@ python scripts/private_manager.py build --name com.example.bakasupro
 ## 接入 GKI 内核编译
 
 本仓库的 Actions 编译管理器和 LKM；GKI 的完整内核镜像继续由你的 GKI 内核仓库编译。
-GKI 构建必须使用本分支的 kernel 源码，或在拉取官方 **35229** 后，应用
-`gki-manager-signature.patch`。仓库内预备副本为
-`docs/patches/gki-manager-signature-35229.patch`，也会随构建产物导出。
-补丁包含签名白名单、公开证书、多管理器默认值和对应构建日志。
+推荐直接使用本分支的 kernel 源码，签名及下文的 SUSFS 适配均已内置，不需要额外补丁。
+仅为兼容仍使用官方 **35229** 的外部构建，Actions 保留导出
+`gki-manager-signature.patch`，包含签名和原生 SUSFS 适配所需文件。
+仓库内的旧副本 `docs/patches/gki-manager-signature-35229.patch` 只包含原有签名改动，
+不代表当前原生 SUSFS 接入代码；两者不能混用。
 应在 BakaSU 源码拉取后、真正编译前应用（命令在 BakaSU 源码根目录运行）：
 
 ```bash
@@ -120,14 +121,33 @@ git apply /path/to/gki-manager-signature.patch
 ```
 
 如果使用本分支源码，直接使用已有的私有认证代码，不要重复应用补丁。
-上游 `kernel/setup.sh` 会拉取官方仓库；仅将脚本下载地址换为你的仓库并不会切换内核源码来源。
-应明确替换 GKI 工作流中的源码 clone / checkout 步骤，或在上游 setup 完成后应用本补丁。
+本分支的 `kernel/setup.sh` 默认拉取 `vring99/BakaSU` 的
+`codex/bakasu-pro-latest` 分支。已有 `KernelSU` 目录不会自动替换远程仓库，
+接入时应确认实际 checkout 来自本分支，不能继续使用工作流中固定的官方提交。
 编译配置保持：
 
 ```text
 CONFIG_KSU=y
 CONFIG_KSU_MULTI_MANAGER_SUPPORT=n
 ```
+
+### GKI + SUSFS 原生接入
+
+本分支直接编译 `kernel/feature/selinux_hide_susfs.c`，不需要在构建时下载
+KernelSU 的 `selinux_hide.c`、覆盖文件或删除 `Please wait susfs update` 阻断。
+Linux 内核本身仍须集成 SUSFS 官方的内核补丁，并启用 `CONFIG_KSU_SUSFS=y`。
+不要再向本分支应用官方 KernelSU 的 `10_enable_susfs_for_ksu.patch`。
+
+当前接入支持以下接口：
+
+| 内核 | SUSFS SELinux 接口 |
+| --- | --- |
+| Android 12 / 5.10、Android 13 / 5.15、Android 14 / 6.1 | 内核钩子使用 `fake_state`，由 BakaSU 设置备份策略 |
+| Android 15 / 6.6、Android 16 / 6.12 | 内核钩子调用 `ss/services.c` 中的 `my_security_*` 函数 |
+
+编译前会检查这些接口是否已接入；旧版或缺失的接口会给出具体错误，不能仅删除检查。
+这部分仅支持内置 `CONFIG_KSU=y`，LKM 继续使用原有 Tracepoint 实现。
+源码及接口检查不代表全部内核版本已完成真实编译或真机验证。
 
 LKM 流程对应 `CONFIG_KSU=m`，证书校验代码相同。不设置固定 `KSU_MANAGER_PACKAGE`，
 否则新随机包名可能被包名过滤提前拒绝。
