@@ -97,9 +97,7 @@ $(info -- $(REPO_NAME) version name: $(KSU_VERSION_FULL))
 ccflags-y += -DKSU_VERSION=$(KSU_VERSION)
 ccflags-y += -DKSU_VERSION_FULL=\"$(KSU_VERSION_FULL)\"
 
-ifdef CONFIG_KSU_MULTI_MANAGER_SUPPORT
-$(info -- Supported Managers: KernelSU Official, KOWSU, BakaSU )
-endif
+$(info -- Trusted Manager: BakaSU Pro private certificate)
 
 KERNEL_VERSION := $(VERSION).$(PATCHLEVEL)
 KERNEL_TYPE := Non-GKI

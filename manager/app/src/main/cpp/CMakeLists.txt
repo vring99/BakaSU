@@ -13,7 +13,10 @@ add_library(kernelsu
         legacy.c
 )
 
-target_include_directories(kernelsu PRIVATE .)
+# Windows clones may materialize the uapi symlink as a text file. Include the
+# repository root explicitly so the shared headers work on both hosts.
+get_filename_component(KSU_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../.." ABSOLUTE)
+target_include_directories(kernelsu PRIVATE . "${KSU_REPO_ROOT}")
 
 find_library(log-lib log)
 

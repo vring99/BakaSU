@@ -1,4 +1,8 @@
-# BakaSU
+# BakaSU Pro
+
+Private build based on BakaSU 35229. Use **Build BakaSU Pro** in GitHub Actions;
+see the [build and signing guide](./zh/PRIVATE_BUILD.md) for setup and GKI integration.
+
 <img align='right' src='BakaSU_Full.svg' width='220px' alt="BakaSU Icon">
 
 Formerly known as: ReSukiSU
@@ -7,8 +11,6 @@ Formerly known as: ReSukiSU
 
 A [`tiann/KernelSU`](https://github.com/tiann/KernelSU)'s downstream, added some personal changes.
 
-[![Latest release](https://img.shields.io/github/v/release/Baka-SU/BakaSU?label=Release&logo=github)](https://github.com/Baka-SU/BakaSU/releases/latest)
-[![Latest CI build (nightly.link)](https://img.shields.io/badge/nightly.link-Latest%20CI%20Build-800080)](https://nightly.link/Baka-SU/BakaSU/workflows/build-manager/main)
 [![Channel](https://img.shields.io/badge/Follow-Telegram-blue.svg?logo=telegram)](https://t.me/BakaSU_Grp)
 [![Kernel License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-orange.svg?logo=gnu)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
 [![Other part License：GPL v3](https://img.shields.io/github/license/Baka-SU/BakaSU?logo=gnu)](../LICENSE)
@@ -20,7 +22,7 @@ A [`tiann/KernelSU`](https://github.com/tiann/KernelSU)'s downstream, added some
 3. [App Profile](https://kernelsu.org/guide/app-profile.html): Lock up the root power in a cage
 4. Support non-GKI and GKI 1.0
 5. Tweaks to the manager theme and the built-in susfs management tool.
-6. Multi manager support, for default [Official KernelSU](https://github.com/tiann/KernelSU)/[KOWSU](https://github.com/KOWX712/KernelSU) is supported work as manager with BakaSU's kernel
+6. Shared private manager certificate for GKI and LKM, with an optional package name or a new random one for each build.
 
 ## Compatibility Status
 

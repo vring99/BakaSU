@@ -1,4 +1,5 @@
 import com.diffplug.spotless.LineEnding
+import java.security.SecureRandom
 
 plugins {
     alias(libs.plugins.agp.app) apply false
@@ -46,10 +47,21 @@ extra["androidTargetCompatibility"] = JavaVersion.VERSION_21
 extra["managerVersionCode"] = 30000 + getGitCommitCount() + 700
 extra["managerVersionName"] = getGitDescribe()
 extra["isPrBuild"] = project.findProperty("IS_PR_BUILD")?.toString()?.toBoolean() ?: false
-extra["defaultManagerPackageName"] = "com.resukisu.resukisu"
-extra["managerPackageName"] = project.findProperty("KSU_PACKAGE_NAME")?.toString() ?: extra["defaultManagerPackageName"]
-extra["defaultManagerAppName"] = if (extra["isPrBuild"] == true) "BakaSU PR" else "BakaSU"
-extra["managerName"] = project.findProperty("KSU_NAME")?.toString() ?: extra["defaultManagerAppName"]
+val requestedManagerPackage = providers.gradleProperty("KSU_PACKAGE_NAME")
+    .orElse(providers.environmentVariable("KSU_PACKAGE_NAME"))
+    .orNull?.trim()?.takeIf { it.isNotEmpty() }
+val packageRandom = SecureRandom()
+val randomManagerPackage = List(3) {
+    List(8) { ('a'.code + packageRandom.nextInt(26)).toChar() }.joinToString("")
+}.joinToString(".")
+val managerPackageName = requestedManagerPackage ?: randomManagerPackage
+require(managerPackageName.matches(Regex("[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+"))) {
+    "KSU_PACKAGE_NAME must be a valid lowercase Android application ID"
+}
+extra["managerPackageName"] = managerPackageName
+logger.lifecycle("Manager package: $managerPackageName")
+extra["defaultManagerAppName"] = "BakaSU Pro"
+extra["managerName"] = extra["defaultManagerAppName"]
 
 val isSpoofedBuild = project.findProperty("IS_SPOOFED_BUILD")?.toString()?.toBoolean() ?: false
 

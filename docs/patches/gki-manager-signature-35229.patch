@@ -1,0 +1,70 @@
+diff --git a/kernel/Kbuild b/kernel/Kbuild
+index b7655cb3..2763acd3 100644
+--- a/kernel/Kbuild
++++ b/kernel/Kbuild
+@@ -97,9 +97,7 @@ $(info -- $(REPO_NAME) version name: $(KSU_VERSION_FULL))
+ ccflags-y += -DKSU_VERSION=$(KSU_VERSION)
+ ccflags-y += -DKSU_VERSION_FULL=\"$(KSU_VERSION_FULL)\"
+ 
+-ifdef CONFIG_KSU_MULTI_MANAGER_SUPPORT
+-$(info -- Supported Managers: KernelSU Official, KOWSU, BakaSU )
+-endif
++$(info -- Trusted Manager: BakaSU Pro private certificate)
+ 
+ KERNEL_VERSION := $(VERSION).$(PATCHLEVEL)
+ KERNEL_TYPE := Non-GKI
+diff --git a/kernel/Kconfig b/kernel/Kconfig
+index 79bc79ee..f6e68e0f 100644
+--- a/kernel/Kconfig
++++ b/kernel/Kconfig
+@@ -73,7 +73,7 @@ config KSU_X86_PATCH_SYSCALL_DISPATCHER
+ config KSU_MULTI_MANAGER_SUPPORT
+ 	bool "Multi KernelSU manager support"
+ 	depends on KSU && !KSU_DISABLE_MANAGER
+-	default y
++	default n
+ 	help
+ 		Enable multi KernelSU manager support
+ 
+diff --git a/kernel/manager/apk_sign.c b/kernel/manager/apk_sign.c
+index eba496d5..71634ea1 100644
+--- a/kernel/manager/apk_sign.c
++++ b/kernel/manager/apk_sign.c
+@@ -32,17 +32,9 @@ struct sdesc {
+ };
+ 
+ static apk_sign_key_t apk_sign_keys[] = {
+-    { EXPECTED_SIZE_BAKASU, EXPECTED_HASH_BAKASU }, /* Baka-SU/BakaSU */
+-#ifdef CONFIG_KSU_MULTI_MANAGER_SUPPORT
+-    { EXPECTED_SIZE_OFFICIAL, EXPECTED_HASH_OFFICIAL }, // tiann/KernelSU
+-    { EXPECTED_SIZE_KOWX712, EXPECTED_HASH_KOWX712 }, // KOWX712/KernelSU
+-#ifdef EXPECTED_SIZE
+-    { EXPECTED_SIZE, EXPECTED_HASH }, // Custom
+-#endif
+-#ifdef EXPECTED_PR_BUILD_SIZE
+-    { EXPECTED_PR_BUILD_SIZE, EXPECTED_PR_BUILD_HASH }, // Custom 2 (For PR build)
+-#endif
+-#endif
++    // Use the same private certificate for built-in/GKI and LKM. Do not restore
++    // upstream manager trust if a downstream recipe enables multi-manager mode.
++    { EXPECTED_SIZE_BAKASU, EXPECTED_HASH_BAKASU },
+ };
+ 
+ static struct sdesc *init_sdesc(struct crypto_shash *alg)
+diff --git a/kernel/manager/manager_sign.h b/kernel/manager/manager_sign.h
+index a940135d..98f12088 100644
+--- a/kernel/manager/manager_sign.h
++++ b/kernel/manager/manager_sign.h
+@@ -5,9 +5,9 @@
+ #define EXPECTED_SIZE_OFFICIAL 0x033b
+ #define EXPECTED_HASH_OFFICIAL "c371061b19d8c7d7d6133c6a9bafe198fa944e50c1b31c9d8daa8d7f1fc2d2d6"
+ 
+-// Baka-SU/BakaSU
+-#define EXPECTED_SIZE_BAKASU 0x377
+-#define EXPECTED_HASH_BAKASU "d3469712b6214462764a1d8d3e5cbe1d6819a0b629791b9f4101867821f1df64"
++// Private manager certificate (shared by built-in/GKI and LKM builds).
++#define EXPECTED_SIZE_BAKASU 0x033a
++#define EXPECTED_HASH_BAKASU "4467a1d3c7ca99f505643f8a60ef5d98ebb08cc6bf043c82be4f668ffc737e0b"
+ 
+ // KOWX712/KernelSU
+ #define EXPECTED_SIZE_KOWX712 0x375

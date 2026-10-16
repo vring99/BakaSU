@@ -1,0 +1,189 @@
+name: Build BakaSU Pro
+
+on:
+  workflow_dispatch:
+    inputs:
+      package_name:
+        description: 'Android package name (leave empty to generate a random name)'
+        required: false
+        default: ''
+        type: string
+  workflow_call:
+    inputs:
+      package_name:
+        required: false
+        default: ''
+        type: string
+    secrets:
+      KEYSTORE:
+        required: true
+      KEYSTORE_PASSWORD:
+        required: true
+      KEY_ALIAS:
+        required: true
+      KEY_PASSWORD:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      package_name: ${{ steps.package.outputs.package_name }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Check private signing key
+        env:
+          KEYSTORE: ${{ secrets.KEYSTORE }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: python3 scripts/private_manager.py prepare-signing
+      - name: Select manager package once
+        id: package
+        env:
+          REQUESTED_PACKAGE: ${{ inputs.package_name }}
+        run: |
+          package=$(python3 scripts/private_manager.py package --name "$REQUESTED_PACKAGE")
+          echo "package_name=$package" >> "$GITHUB_OUTPUT"
+          echo "BakaSU Pro package: $package"
+          python3 -c 'import json,sys; json.dump({"package_name":sys.argv[1]}, open("manager-identity.json","w"))' "$package"
+          echo "BakaSU Pro package: \`$package\`" >> "$GITHUB_STEP_SUMMARY"
+      - name: Check GKI and LKM manager identity
+        run: |
+          python3 -m pip install PyYAML
+          python3 -m unittest discover -s scripts/tests -v
+      - name: Export public GKI integration patch
+        run: |
+          python3 scripts/private_manager.py gki-patch --output gki-manager-signature.patch
+          cmp gki-manager-signature.patch docs/patches/gki-manager-signature-35229.patch
+          cp manager/private-signing/manager-cert.der manager-cert.der
+      - uses: actions/upload-artifact@v7
+        with:
+          name: BakaSU-Pro-identity
+          if-no-files-found: error
+          path: |
+            manager-identity.json
+            manager-cert.der
+            gki-manager-signature.patch
+
+  build-lkm:
+    needs: prepare
+    uses: ./.github/workflows/build-lkm.yml
+    secrets: inherit
+
+  build-ksuinit:
+    needs: prepare
+    uses: ./.github/workflows/ksuinit.yml
+
+  build-ksud:
+    needs: [prepare, build-lkm, build-ksuinit]
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [aarch64-linux-android, x86_64-linux-android, armv7-linux-androideabi, riscv64-linux-android]
+    uses: ./.github/workflows/ksud.yml
+    with:
+      target: ${{ matrix.target }}
+      manager_package: ${{ needs.prepare.outputs.package_name }}
+
+  build-manager:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v6
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-37 build-tools;36.1.0'
+      - name: Restore signing key
+        env:
+          KEYSTORE: ${{ secrets.KEYSTORE }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: python3 scripts/private_manager.py prepare-signing
+      - name: Build and verify manager
+        env:
+          MANAGER_PACKAGE: ${{ needs.prepare.outputs.package_name }}
+        run: python3 scripts/private_manager.py build --name "$MANAGER_PACKAGE"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: BakaSU-Pro-gradle
+          if-no-files-found: error
+          path: manager/app/build/outputs/apk/release/*
+
+  repack:
+    needs: [prepare, build-manager, build-ksud]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools build-tools;36.1.0'
+      - uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+      - name: Stage manager and daemon binaries
+        run: |
+          mkdir -p manager/app/build/outputs/apk/release
+          cp artifacts/BakaSU-Pro-gradle/*.apk manager/app/build/outputs/apk/release/
+          for triple in aarch64-linux-android x86_64-linux-android armv7-linux-androideabi riscv64-linux-android; do
+            mkdir -p "target/$triple/release"
+            binary=$(find "artifacts/ksud-$triple" -type f -name ksud -print -quit)
+            test -n "$binary"
+            cp "$binary" "target/$triple/release/ksud"
+          done
+      - name: Restore signing key
+        env:
+          KEYSTORE: ${{ secrets.KEYSTORE }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: python3 scripts/private_manager.py prepare-signing
+      - name: Pack ksud with private LKM files and resign
+        run: |
+          python3 repack_apk_multi.py repack -c manager/private-signing/repack-config.json -b release -t release \
+            -a arm64-v8a -a armeabi-v7a -a x86_64 -a riscv64 --no-strip
+      - name: Verify every final APK
+        env:
+          MANAGER_PACKAGE: ${{ needs.prepare.outputs.package_name }}
+        run: |
+          test "$(find manager/app/build/outputs/apk/release -name '*.apk' | wc -l)" -eq "$(find dist -name '*.apk' | wc -l)"
+          for apk in dist/*.apk; do
+            python3 scripts/private_manager.py check-apk "$apk" --name "$MANAGER_PACKAGE" --require-ksud
+          done
+          (
+            cd dist
+            sha256sum *.apk > SHA256SUMS.txt
+          )
+          cp artifacts/BakaSU-Pro-identity/* dist/
+          echo "Download the BakaSU-Pro-release artifact for the final APKs, package name and GKI patch." >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: BakaSU-Pro-release
+          if-no-files-found: error
+          path: dist/*

@@ -1,13 +1,28 @@
-name: Release
+name: Release BakaSU Pro
 on:
   push:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag to create at the selected commit, e.g. v4.1.0-pro.1'
+        required: true
+        type: string
+      package_name:
+        description: 'Android package name (leave empty to generate a random name)'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: write
 
 jobs:
   build-manager:
-    uses: ./.github/workflows/build-manager.yml
+    uses: ./.github/workflows/build-private-manager.yml
+    with:
+      package_name: ${{ inputs.package_name || '' }}
     secrets: inherit
   release:
     needs:
@@ -18,21 +33,18 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           path: manager
-          name: "Manager-release"
-          merge-multiple: true
-
-      - name: Check is rc tags
-        id: is_rc_tag
-        run: |
-          if [ "${{ contains(github.ref_name,'-rc') }}" == 'true' ]; then
-            echo "IS_RC_TAG=true" >> $GITHUB_OUTPUT
-          else
-            echo "IS_RC_TAG=false" >> $GITHUB_OUTPUT
-          fi
+          name: BakaSU-Pro-release
 
       - name: release
         uses: softprops/action-gh-release@v3
         with:
-          prerelease: ${{ steps.is_rc_tag.outputs.IS_RC_TAG == 'true' }}
+          tag_name: ${{ inputs.tag_name || github.ref_name }}
+          target_commitish: ${{ github.sha }}
+          prerelease: ${{ contains(inputs.tag_name || github.ref_name, '-rc') }}
+          fail_on_unmatched_files: true
           files: |
             manager/*.apk
+            manager/SHA256SUMS.txt
+            manager/manager-identity.json
+            manager/manager-cert.der
+            manager/gki-manager-signature.patch

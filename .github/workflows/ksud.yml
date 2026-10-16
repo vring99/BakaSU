@@ -9,6 +9,11 @@ on:
         required: false
         type: string
         default: ubuntu-latest
+      manager_package:
+        description: 'Manager package selected once by the caller'
+        required: false
+        type: string
+        default: ''
       pack_lkm:
         required: false
         type: boolean
@@ -82,11 +87,17 @@ jobs:
             userspace/ksud/src/lkm_image_bootstrap.S
 
       - name: Build ksud
+        env:
+          KSU_PACKAGE_NAME: ${{ inputs.manager_package }}
         run: |
-          if [ "${{github.event_name}}" == "pull_request" ]; then
+          if [ -n "$KSU_PACKAGE_NAME" ]; then
+            echo "Building ksud for manager package: $KSU_PACKAGE_NAME"
+          elif [ "${{github.event_name}}" == "pull_request" ]; then
             export KSU_PACKAGE_NAME="com.resukisu.resukisu.pr${{github.event.pull_request.number}}"
           elif [ "${{github.ref_type}}" != "tag" ] && [ "${{github.ref_name}}" != "main" ]; then
             export KSU_PACKAGE_NAME="com.resukisu.resukisu.dev"
+          else
+            unset KSU_PACKAGE_NAME
           fi
 
           if [ "${{ inputs.target }}" == "riscv64-linux-android" ]; then

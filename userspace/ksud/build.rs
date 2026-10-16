@@ -353,6 +353,7 @@ fn build_mkbootfs(out_directory: &Path) {
 }
 
 fn main() {
+    println!("cargo:rerun-if-env-changed=KSU_PACKAGE_NAME");
     assemble_bootstrap();
 
     let (code, name) = match get_git_version() {

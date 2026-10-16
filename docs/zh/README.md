@@ -1,4 +1,8 @@
-# BakaSU
+# BakaSU Pro
+
+基于 BakaSU 35229 的私有签名版本。GitHub 云编译入口为 **Build BakaSU Pro**；
+首次 push、签名 Secrets 和 GKI 接入见[构建说明](./PRIVATE_BUILD.md)。
+
 <img align='right' src='../BakaSU_Full.svg' width='220px' alt="BakaSU Icon">
 
 曾用名：ReSukiSU
@@ -7,8 +11,6 @@
 
 一个 [`tiann/KernelSU`](https://github.com/tiann/KernelSU) 的下游分支, 添加了一些个人修改。
 
-[![最新发行](https://img.shields.io/github/v/release/Baka-SU/BakaSU?label=Release&logo=github)](https://github.com/Baka-SU/BakaSU/releases/latest)
-[![最新 CI 构建（nightly.link）](https://img.shields.io/badge/nightly.link-%E6%9C%80%E6%96%B0%20CI%20%E6%9E%84%E5%BB%BA-800080)](https://nightly.link/Baka-SU/BakaSU/workflows/build-manager/main)
 [![频道](https://img.shields.io/badge/Follow-Telegram-blue.svg?logo=telegram)](https://t.me/BakaSU_Grp)
 [![Kernel License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-orange.svg?logo=gnu)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
 [![其他部分 License：GPL v3](https://img.shields.io/github/license/Baka-SU/BakaSU?logo=gnu)](../../LICENSE)
@@ -20,7 +22,7 @@
 3. [App Profile](https://kernelsu.org/zh_CN/guide/app-profile.html): 把 Root 权限关进笼子里。
 4. 支持 non-GKI 与 GKI 1.0。
 5. 可调整管理器外观，可自定义 susfs 配置。
-6. 多管理器支持，默认支持使用 [官方KernelSU](https://github.com/tiann/KernelSU)/[KOWSU](https://github.com/KOWX712/KernelSU) 作为管理器与 BakaSU 内核共同工作
+6. GKI 与 LKM 共用私有管理器证书，包名可在每次编译时指定，留空则随机生成。
 
 ## 兼容状态
 
