@@ -22,6 +22,15 @@ val managerVersionName = rootProject.extra["managerVersionName"] as String
 val managerPackageName = rootProject.extra["managerPackageName"] as String
 val managerName = rootProject.extra["managerName"] as String
 
+val managerSignHeader = rootProject.file("../kernel/manager/manager_sign.h").readText()
+val managerCertificateSize = Regex("(?m)^#define EXPECTED_SIZE_BAKASU\\s+(\\S+)")
+    .find(managerSignHeader)?.groupValues?.get(1)?.let { Integer.decode(it) }
+    ?: error("Missing BakaSU Pro certificate size in manager_sign.h")
+val managerCertificateHash = Regex("(?m)^#define EXPECTED_HASH_BAKASU\\s+\"([0-9a-f]{64})\"")
+    .find(managerSignHeader)?.groupValues?.get(1)
+    ?: error("Missing BakaSU Pro certificate hash in manager_sign.h")
+val expectedManagerSignature = "size: 0x${managerCertificateSize.toString(16)}, hash: $managerCertificateHash"
+
 apksign {
     storeFileProperty = "KEYSTORE_FILE"
     storePasswordProperty = "KEYSTORE_PASSWORD"
@@ -137,6 +146,7 @@ android {
 
         val isPrBuild = rootProject.extra["isPrBuild"] as Boolean
         buildConfigField("boolean", "IS_PR_BUILD", isPrBuild.toString())
+        buildConfigField("String", "EXPECTED_MANAGER_SIGNATURE", "\"$expectedManagerSignature\"")
         resValue("string", "app_name", managerName)
 
         externalNativeBuild {
@@ -164,6 +174,12 @@ android {
     lint {
         abortOnError = true
         checkReleaseBuilds = false
+    }
+
+    testOptions {
+        unitTests.all {
+            it.systemProperty("managerCertificateFile", rootProject.file("../docs/private-manager-cert.der").absolutePath)
+        }
     }
 
     compileOptions {
@@ -194,6 +210,7 @@ aboutLibraries {
 }
 
 dependencies {
+    testImplementation(libs.junit)
     lintChecks(project(":lint-rules"))
     baselineProfile(project(":baselineprofile"))
 

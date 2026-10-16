@@ -146,12 +146,13 @@ class KsuCliRepository(context: Context) {
     }
 
     suspend fun isOfficialSignature(packageResourcePath: String): Boolean = withContext(Dispatchers.IO) {
-        val shell = getRootShell()
-        val out = shell.newJob()
-            .add("${getKsuDaemonPath()} debug get-sign ${shellQuote(packageResourcePath)}")
-            .to(ArrayList<String>(), null).exec().out
-        out.firstOrNull()?.trim()
-            .orEmpty() == "size: 0x377, hash: d3469712b6214462764a1d8d3e5cbe1d6819a0b629791b9f4101867821f1df64"
+        // Reading our own APK certificate does not require kernel authorization.
+        Shell.Builder.create().build("sh").use { shell ->
+            val result = shell.newJob()
+                .add("${shellQuote(getKsuDaemonPath())} debug get-sign ${shellQuote(packageResourcePath)}")
+                .to(ArrayList<String>(), null).exec()
+            isExpectedManagerSignature(result.isSuccess, result.out)
+        }
     }
 
     suspend fun getFeatureStatus(feature: String): String = withContext(Dispatchers.IO) {

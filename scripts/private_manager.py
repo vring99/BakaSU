@@ -216,7 +216,7 @@ def build_manager(package, properties):
     for key, value in read_signing_properties(properties).items():
         environment[f"ORG_GRADLE_PROJECT_{key}"] = value
     executable = [str(ROOT / "manager/gradlew.bat")] if os.name == "nt" else ["bash", "./gradlew"]
-    subprocess.run(executable + ["spotlessCheck", "assembleRelease", "lintRelease", "--no-configuration-cache"],
+    subprocess.run(executable + ["spotlessCheck", "testDebugUnitTest", "assembleRelease", "lintRelease", "--no-configuration-cache"],
                    cwd=ROOT / "manager", env=environment, check=True)
     output = ROOT / "manager/app/build/outputs/apk/release"
     apks = sorted(output.glob("*.apk"))

@@ -3,6 +3,9 @@
 基于 BakaSU 35229，基础提交为 `d7260ca1e5c128061122924d0d48754e361e135c`。
 应用名称为 **BakaSU Pro**。安装包名可以每次指定，留空时每次生成新的随机包名。
 Gradle 和 ksud 使用同一次构建选定的包名。内核依靠证书识别管理器，不依赖包名。
+管理器自检从同一份 `kernel/manager/manager_sign.h` 生成证书配置，避免私有签名被误报。
+内核版本信息中已有的 `@` 署名统一替换为 `@BakaSUPro`，前面的版本号和提交信息保留。
+该规则同时用于 GKI 和 LKM；原本没有 `@` 后缀的自定义格式保持不变。
 
 ## 首次 push 与 GitHub 编译
 
@@ -76,7 +79,7 @@ python scripts/private_manager.py build --name com.example.bakasupro
 ```
 
 脚本从本地 `signing.properties` 读取私钥配置，通过环境变量传递签名密码，执行
-`spotlessCheck`、`assembleRelease`、`lintRelease`，并核对 APK 的真实包名、名称和签名。
+`spotlessCheck`、`testDebugUnitTest`、`assembleRelease`、`lintRelease`，并核对 APK 的真实包名、名称和签名。
 `manager/app/build/outputs/apk/release/private-build.json` 记录本次包名、证书和文件 SHA-256。
 
 此阶段的 Gradle APK **尚未注入 ksud/LKM**；安装用的完整 APK 由下面的 Actions 流程打包。
