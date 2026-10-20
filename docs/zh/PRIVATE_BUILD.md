@@ -150,6 +150,10 @@ Linux 内核本身仍须集成 SUSFS 官方的内核补丁，并启用 `CONFIG_K
 编译前会检查这些接口是否已接入；旧版或缺失的接口会给出具体错误，不能仅删除检查。
 这部分仅支持内置 `CONFIG_KSU=y`，LKM 继续使用原有 Tracepoint 实现。
 SUSFS 模式由官方内核补丁选择调用入口，不再重复修改 SELinux 函数表。
+新版官方 SUSFS 还会调用 `ksu_setup_preinit_file` 和
+`ksu_preinit_handle_post_execveat`。Pro 尚未实现 preinit runner，因此通过
+`compat/susfs_preinit.c` 返回“不支持”，让官方补丁继续执行原有 init；不会创建
+preinit fd、改写 init 路径或替换执行结果。这部分仅随 SUSFS 编译，LKM 不接入。
 源码及接口检查不代表全部内核版本已完成真实编译或真机验证。
 
 LKM 流程对应 `CONFIG_KSU=m`，证书校验代码相同。不设置固定 `KSU_MANAGER_PACKAGE`，
