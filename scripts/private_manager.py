@@ -29,7 +29,8 @@ GKI_FILES = [
     "kernel/supercall/perm.c",
     "kernel/supercall/supercall.c",
     "kernel/supercall/dispatch.c",
-    "kernel/feature/selinux_hide_susfs.c",
+    "kernel/feature/selinux_hide.c",
+    "kernel/feature/selinux_hide.h",
     "kernel/tools/susfs_compat.mk",
 ]
 SIGNING_PROPERTIES = ROOT / "manager/private-signing/signing.properties"

@@ -133,20 +133,23 @@ CONFIG_KSU_MULTI_MANAGER_SUPPORT=n
 
 ### GKI + SUSFS 原生接入
 
-本分支直接编译 `kernel/feature/selinux_hide_susfs.c`，不需要在构建时下载
+本分支统一编译 `kernel/feature/selinux_hide.c`，SUSFS 和 Tracepoint 共用已有的
+SID 表同步和查询时序修复。旧的 `selinux_hide_susfs.c` 已移除，不需要在构建时下载
 KernelSU 的 `selinux_hide.c`、覆盖文件或删除 `Please wait susfs update` 阻断。
 Linux 内核本身仍须集成 SUSFS 官方的内核补丁，并启用 `CONFIG_KSU_SUSFS=y`。
 不要再向本分支应用官方 KernelSU 的 `10_enable_susfs_for_ksu.patch`。
 
-当前接入支持以下接口：
+当前接入要求 SUSFS 官方 2026-10-19 的“Reuse upstream selinux_hide existing code”
+更新或包含相同接口的后续版本。官方内核补丁保持原样，由 SUSFS 的内联入口调用
+本分支导出的 KSU 函数：
 
 | 内核 | SUSFS SELinux 接口 |
 | --- | --- |
-| Android 12 / 5.10、Android 13 / 5.15、Android 14 / 6.1 | 内核钩子使用 `fake_state`，由 BakaSU 设置备份策略 |
-| Android 15 / 6.6、Android 16 / 6.12 | 内核钩子调用 `ss/services.c` 中的 `my_security_*` 函数 |
+| Android 12 / 5.10 至 Android 16 / 6.12 | `my_setprocattr`、`my_write_context`、`my_write_access` |
 
 编译前会检查这些接口是否已接入；旧版或缺失的接口会给出具体错误，不能仅删除检查。
 这部分仅支持内置 `CONFIG_KSU=y`，LKM 继续使用原有 Tracepoint 实现。
+SUSFS 模式由官方内核补丁选择调用入口，不再重复修改 SELinux 函数表。
 源码及接口检查不代表全部内核版本已完成真实编译或真机验证。
 
 LKM 流程对应 `CONFIG_KSU=m`，证书校验代码相同。不设置固定 `KSU_MANAGER_PACKAGE`，
