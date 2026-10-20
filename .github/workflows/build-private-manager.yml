@@ -60,6 +60,8 @@ jobs:
           echo "BakaSU Pro package: \`$package\`" >> "$GITHUB_STEP_SUMMARY"
       - name: Check GKI and LKM manager identity
         run: |
+          sudo apt-get update
+          sudo apt-get install -y clang lld linux-libc-dev linux-libc-dev-arm64-cross
           python3 -m pip install PyYAML
           python3 -m unittest discover -s scripts/tests -v
       - name: Export public GKI integration patch

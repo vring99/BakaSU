@@ -46,7 +46,9 @@ SHIM = r"""
 #define get_user(x,p) ((p) ? ((x) = *(p), 0) : 1)
 #define compat_ptr(p) ((void *)(uintptr_t)(p))
 typedef uint32_t compat_uptr_t;
-typedef long long loff_t;
+/* Keep the kernel shim independent of the host libc's loff_t definition. */
+typedef int64_t test_loff_t;
+#define loff_t test_loff_t
 struct file { int unused; } runner_file;
 struct path { int unused; };
 struct pt_regs;
@@ -328,6 +330,8 @@ EXPORT const char *parameters(int count) { return build_params(args + 2, count -
                 arch_headers = prefix / "lib/linux/uapi" / arch
                 if not (arch_headers / "asm/unistd.h").is_file():
                     arch_headers = headers / triple
+                if not (arch_headers / "asm/unistd.h").is_file():
+                    arch_headers = prefix / triple / "include"
                 if not (arch_headers / "asm/unistd.h").is_file():
                     continue
                 with self.subTest(arch=arch):
