@@ -39,6 +39,7 @@
 #include "ksu.h"
 #include "ksud.h"
 #include "ksud_boot.h"
+#include "preinit/preinit.h"
 #include "compat/kernel_compat.h"
 #include "selinux/selinux.h"
 #include "manager/throne_tracker.h"
@@ -268,6 +269,7 @@ void ksu_handle_execveat_ksud(const char *filename, struct user_arg_ptr *argv, s
         char buf[16];
         if (!init_second_stage_executed && check_argv(*argv, 1, "second_stage", buf, sizeof(buf))) {
             pr_info("/system/bin/init second_stage executed via argv1 check\n");
+            ksu_preinit_release();
             ksu_selinux_hide_handle_second_stage();
             apply_kernelsu_rules();
             cache_sid();
@@ -283,6 +285,7 @@ void ksu_handle_execveat_ksud(const char *filename, struct user_arg_ptr *argv, s
             char buf[16];
             if (!init_second_stage_executed && check_argv(*argv, 1, "--second-stage", buf, sizeof(buf))) {
                 pr_info("/init second_stage executed via argv1 check\n");
+                ksu_preinit_release();
 
                 // This detect only happen in Android 10 +
                 // But still init it to avoid we should handle more case
@@ -318,6 +321,7 @@ void ksu_handle_execveat_ksud(const char *filename, struct user_arg_ptr *argv, s
                     if (!strcmp(env_name, "INIT_SECOND_STAGE") &&
                         (!strcmp(env_value, "1") || !strcmp(env_value, "true"))) {
                         pr_info("/init second_stage executed via envp check\n");
+                        ksu_preinit_release();
 
                         // This detect only happen in Android 10 +
                         // But still init it to avoid we should handle more case
@@ -338,6 +342,7 @@ void ksu_handle_execveat_ksud(const char *filename, struct user_arg_ptr *argv, s
         char buf[16];
         if (check_argv(*argv, 1, "-Xzygote", buf, sizeof(buf))) {
             pr_info("exec zygote, /data prepared, second_stage: %d\n", init_second_stage_executed);
+            ksu_preinit_release();
             on_post_fs_data();
             first_zygote = false;
             ksu_stop_ksud_execve_hook();
@@ -353,7 +358,8 @@ static struct file_operations fops_proxy;
 static ssize_t ksu_rc_pos = 0;
 const size_t ksu_rc_len = sizeof(KERNEL_SU_RC) - 1;
 
-// Prefer /metadata/watchdog/ when present, else /metadata.
+// Prefer /metadata/vold, else /metadata/watchdog, else /metadata.
+#define MODULE_RC_PATH_VOLD "/metadata/vold/ksu/modules.rc"
 #define MODULE_RC_PATH_WATCHDOG "/metadata/watchdog/ksu/modules.rc"
 #define MODULE_RC_PATH_DEFAULT "/metadata/ksu/modules.rc"
 static char *module_rc_buf;
@@ -362,7 +368,12 @@ static ssize_t module_rc_pos;
 
 static struct file *open_module_rc(const char **chosen_path)
 {
-    struct file *f = filp_open(MODULE_RC_PATH_WATCHDOG, O_RDONLY, 0);
+    struct file *f = filp_open(MODULE_RC_PATH_VOLD, O_RDONLY, 0);
+    if (!IS_ERR(f)) {
+        *chosen_path = MODULE_RC_PATH_VOLD;
+        return f;
+    }
+    f = filp_open(MODULE_RC_PATH_WATCHDOG, O_RDONLY, 0);
     if (!IS_ERR(f)) {
         *chosen_path = MODULE_RC_PATH_WATCHDOG;
         return f;
@@ -622,7 +633,7 @@ static __always_inline void ksu_common_newfstat_ret(unsigned long fd_long, void 
     pr_info("%s: stat init.rc \n", __func__);
     load_module_rc_once();
 
-    uintptr_t statbuf_ptr_local = (uintptr_t) * (void **)statbuf_ptr;
+    uintptr_t statbuf_ptr_local = (uintptr_t)*(void **)statbuf_ptr;
     void __user *statbuf = (void __user *)statbuf_ptr_local;
     if (!statbuf)
         return;

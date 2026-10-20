@@ -437,6 +437,7 @@ fun LabelText(
     label: String,
     containerColor: Color = MaterialTheme.colorScheme.primary,
     contentColor: Color = contentColorFor(containerColor),
+    maxLines: Int = 1,
 ) {
     Surface(
         shape = RoundedCornerShape(4.dp),
@@ -447,7 +448,7 @@ fun LabelText(
             style = MaterialTheme.typography.labelSmallEmphasized,
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
             color = contentColor,
-            maxLines = 1,
+            maxLines = maxLines,
             overflow = TextOverflow.Ellipsis,
         )
     }

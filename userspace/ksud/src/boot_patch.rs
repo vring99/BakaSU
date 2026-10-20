@@ -509,6 +509,10 @@ pub struct BootPatchArgs {
     #[arg(long, default_value = "false")]
     no_custom_rc: bool,
 
+    /// Do not run module preinit actions
+    #[arg(long, default_value = "false")]
+    no_preinit: bool,
+
     /// Block what module loading
     #[arg(
         long,
@@ -551,6 +555,7 @@ pub fn patch(args: BootPatchArgs) -> Result<()> {
             #[cfg(target_os = "android")]
             partition,
             no_custom_rc,
+            no_preinit,
             #[cfg(not(target_os = "android"))]
             arch,
             ramdisk,
@@ -779,6 +784,7 @@ pub fn patch(args: BootPatchArgs) -> Result<()> {
         };
 
         apply_config("no custom rc", "norc=1", no_custom_rc);
+        apply_config("no preinit", "preinit=0", no_preinit);
         apply_config("allow shell", "allow_shell=1", allow_shell);
         if let Some(bundled) = bundled_lkm {
             apply_config("bundled LKM", "bundled=1", bundled);

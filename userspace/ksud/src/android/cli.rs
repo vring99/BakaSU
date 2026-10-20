@@ -8,7 +8,7 @@ use log::{LevelFilter, error, info};
 use crate::{
     android::{
         debug, dynamic_manager, feature, init_event, ksucalls,
-        module::{self, module_config, regenerate_preinit_rc},
+        module::{self, module_config, regenerate_preinit},
         profile, sepolicy, su, sulog, susfs, uapi, umount_config, utils,
     },
     anykernel3::{self, Slot},
@@ -67,6 +67,10 @@ enum Commands {
         /// Pass allow_shell=1 when loading kernelsu.ko
         #[arg(long)]
         allow_shell: bool,
+
+        /// Do not run module preinit actions
+        #[arg(long)]
+        no_preinit: bool,
 
         /// Restore adb properties after magica late-load
         #[arg(long)]
@@ -363,6 +367,12 @@ enum Module {
     /// list all modules
     List,
 
+    /// Preinit actions run before SELinux policy is loaded
+    Preinit {
+        #[command(subcommand)]
+        command: PreinitCmd,
+    },
+
     /// manage module configuration
     Config {
         /// target internal module name (resolved as internal.<name>)
@@ -371,6 +381,14 @@ enum Module {
         #[command(subcommand)]
         command: ModuleConfigCmd,
     },
+}
+
+#[derive(clap::Subcommand, Debug)]
+enum PreinitCmd {
+    /// Show per-module preinit state for the next boot
+    Status,
+    /// Re-enable preinit after repeated failed boots
+    Reset,
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -566,7 +584,7 @@ enum UmountOp {
 
 #[derive(clap::Subcommand, Debug)]
 enum Initrc {
-    /// Regenerate preinit rc file
+    /// Regenerate initrc and module preinit content
     Refresh,
 }
 
@@ -626,6 +644,13 @@ pub fn run() -> Result<()> {
                 Module::Disable { id } => module::disable_module(&id),
                 Module::Action { id } => module::run_action(&id),
                 Module::List => module::list_modules(),
+                Module::Preinit { command } => match command {
+                    PreinitCmd::Status => {
+                        crate::android::preinit::print_status();
+                        Ok(())
+                    }
+                    PreinitCmd::Reset => crate::android::preinit::reset_bootcount(),
+                },
                 Module::Config { internal, command } => {
                     let module_id = match internal {
                         Some(internal_name) => format!("internal.{internal_name}"),
@@ -732,18 +757,25 @@ pub fn run() -> Result<()> {
         Commands::LateLoad {
             magica,
             allow_shell,
+            no_preinit,
             post_magica,
             kmi,
             package_name,
         } => {
             if let Some(port) = magica {
-                return crate::android::late_load::magica::run(port, &package_name, allow_shell)
-                    .map_err(|e| {
-                        error!("Error running magica: {e}");
-                        e
-                    });
+                return crate::android::late_load::magica::run(
+                    port,
+                    &package_name,
+                    allow_shell,
+                    no_preinit,
+                )
+                .map_err(|e| {
+                    error!("Error running magica: {e}");
+                    e
+                });
             }
-            let result = crate::android::late_load::run(&package_name, kmi, allow_shell);
+            let result =
+                crate::android::late_load::run(&package_name, kmi, allow_shell, no_preinit);
             if post_magica {
                 info!("Restoring adb properties (post-magica cleanup)...");
                 if let Err(e) = crate::android::late_load::magica::disable_adb_root() {
@@ -931,7 +963,7 @@ pub fn run() -> Result<()> {
             }
         },
         Commands::Initrc { command } => match command {
-            Initrc::Refresh => regenerate_preinit_rc(),
+            Initrc::Refresh => regenerate_preinit(),
         },
     };
 

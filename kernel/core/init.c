@@ -36,6 +36,7 @@
 #include "feature/sucompat.h"
 #include "feature/selinux_hide.h"
 #include "infra/symbol_resolver.h"
+#include "preinit/preinit.h"
 
 #ifdef CONFIG_ARM64
 #include "compat/apatch_conflict.h"
@@ -285,6 +286,8 @@ int __init kernelsu_init(void)
 
         ksu_ksud_init();
 
+        ksu_preinit_init();
+
         ksu_file_wrapper_init();
     }
 
@@ -301,8 +304,10 @@ void __exit kernelsu_exit(void)
     // Phase 1: Stop all hooks first to prevent new callbacks
     ksu_hook_exit();
     ksu_supercalls_exit();
-    if (!ksu_late_loaded)
+    if (!ksu_late_loaded) {
         ksu_ksud_exit();
+        ksu_preinit_exit();
+    }
 
     // Wait for any in-flight RCU readers (e.g. handler traversing allow_list)
     synchronize_rcu();

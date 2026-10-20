@@ -138,7 +138,7 @@ fn connect_to_device(port: u16) -> Result<ADBTcpDevice> {
     bail!("Failed to connect to ADB device after {MAX_RETRIES} attempts")
 }
 
-pub fn run(port: u16, package_name: &String, allow_shell: bool) -> Result<()> {
+pub fn run(port: u16, package_name: &String, allow_shell: bool, no_preinit: bool) -> Result<()> {
     enable_adb_root(port)?;
 
     let mut device = connect_to_device(port)?;
@@ -150,11 +150,13 @@ pub fn run(port: u16, package_name: &String, allow_shell: bool) -> Result<()> {
     // 1. Load kernelsu.ko, enforce SELinux, run stage scripts
     // 2. Restore adb properties (disable adb root/tcp mode)
     let allow_shell_arg = if allow_shell { " --allow-shell" } else { "" };
+    let no_preinit_arg = if no_preinit { " --no-preinit" } else { "" };
     let cmd = format!(
-        "{} late-load --post-magica --package-name {}{}",
+        "{} late-load --post-magica --package-name {}{}{}",
         self_path.display(),
         package_name,
-        allow_shell_arg
+        allow_shell_arg,
+        no_preinit_arg
     );
     info!("Executing '{cmd}' via adb shell...");
     let mut stdout = Vec::new();

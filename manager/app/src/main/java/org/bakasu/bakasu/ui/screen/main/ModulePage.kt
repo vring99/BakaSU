@@ -1399,6 +1399,15 @@ fun ModuleItem(
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                 )
             }
+            module.preinitWarning()?.let { warning ->
+                Spacer(modifier = Modifier.height(8.dp))
+                LabelText(
+                    label = stringResource(warning),
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    maxLines = Int.MAX_VALUE,
+                )
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 

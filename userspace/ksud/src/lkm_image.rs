@@ -83,6 +83,10 @@ pub struct BootPatchV2Args {
     /// Replace an existing output file
     #[arg(long, default_value = "false")]
     pub force: bool,
+
+    /// Do not run module preinit actions
+    #[arg(long, default_value = "false")]
+    pub no_preinit: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -2351,7 +2355,32 @@ fn apply_bootstrap_relocation(
 
 // Raw ARM64 Image injection.
 
-fn inject_image(original_image: &[u8], module: &[u8]) -> Result<(Vec<u8>, ImageInjectionReport)> {
+fn set_bootstrap_no_preinit(
+    object: &BootstrapObject<'_>,
+    bootstrap: &mut LinkedBootstrap,
+    code_address: u64,
+    definitions: &BTreeMap<&str, u64>,
+) -> Result<()> {
+    let address = object.named_symbol_value("ksu_empty_args", code_address, definitions)?;
+    let offset = usize::try_from(
+        address
+            .checked_sub(code_address)
+            .context("bootstrap parameter address underflow")?,
+    )?;
+    let slot = get_slice_mut(&mut bootstrap.data, offset, 16)?;
+    ensure!(
+        slot.iter().all(|byte| *byte == 0),
+        "bootstrap parameter slot is not empty"
+    );
+    slot[..10].copy_from_slice(b"preinit=0\0");
+    Ok(())
+}
+
+fn inject_image(
+    original_image: &[u8],
+    module: &[u8],
+    no_preinit: bool,
+) -> Result<(Vec<u8>, ImageInjectionReport)> {
     let mut image = original_image.to_vec();
     let image_size = parse_arm64_image_size(&image)?;
     ensure!(
@@ -2437,9 +2466,17 @@ fn inject_image(original_image: &[u8], module: &[u8]) -> Result<(Vec<u8>, ImageI
     let code_address = image_base
         .checked_add(code_offset as u64)
         .context("bootstrap address overflow")?;
-    let bootstrap = bootstrap_object
+    let mut bootstrap = bootstrap_object
         .link(code_address, &definitions)
         .context("cannot relocate the embedded LKM bootstrap")?;
+    if no_preinit {
+        set_bootstrap_no_preinit(
+            &bootstrap_object,
+            &mut bootstrap,
+            code_address,
+            &definitions,
+        )?;
+    }
     let bootstrap_address = bootstrap.entry_address;
     let adapter_address = bootstrap.strndup_adapter_address;
     let reserve_wrapper_address = bootstrap.reserve_wrapper_address;
@@ -2601,7 +2638,7 @@ pub fn patch_boot(args: &BootPatchV2Args) -> Result<()> {
     };
 
     println!("- Recovering BTF/kallsyms and injecting module");
-    let (patched_kernel, report) = inject_image(&raw_kernel, &module)?;
+    let (patched_kernel, report) = inject_image(&raw_kernel, &module, args.no_preinit)?;
 
     println!("- Repacking boot image");
     let mut patcher = BootImagePatchOption::new(&boot_image);
@@ -2911,7 +2948,7 @@ mod tests {
         assert_eq!(name, "android12-5.10_kernelsu.ko");
         #[cfg(not(target_os = "android"))]
         assert_eq!(name, "aarch64/android12-5.10_kernelsu.ko");
-        assert!(!assets::get_asset_data(&name).unwrap().is_empty());
+        assert!(!assets::get_asset(&name).unwrap().is_empty());
     }
 
     #[test]
@@ -2959,6 +2996,28 @@ mod tests {
                 .contains(&linked.strndup_adapter_address)
         );
         assert_eq!(read_u32(&linked.data, 0).unwrap(), 0xd503_245f);
+    }
+
+    #[test]
+    fn embedded_bootstrap_no_preinit_uses_reserved_parameter_slot() {
+        let image_base = 0xffff_ffc0_0800_0000;
+        let object = BootstrapObject::parse(BOOTSTRAP_OBJECT).unwrap();
+        let definitions = bootstrap_test_definitions(&object, image_base);
+        let mut linked = object.link(image_base, &definitions).unwrap();
+        let offset = usize::try_from(
+            object
+                .named_symbol_value("ksu_empty_args", image_base, &definitions)
+                .unwrap()
+                - image_base,
+        )
+        .unwrap();
+        let original = linked.data.clone();
+        assert_eq!(&original[offset..offset + 16], &[0; 16]);
+        set_bootstrap_no_preinit(&object, &mut linked, image_base, &definitions).unwrap();
+        assert_eq!(&linked.data[offset..offset + 10], b"preinit=0\0");
+        assert_eq!(&linked.data[..offset], &original[..offset]);
+        assert_eq!(&linked.data[offset + 10..], &original[offset + 10..]);
+        assert!(set_bootstrap_no_preinit(&object, &mut linked, image_base, &definitions).is_err());
     }
 
     #[test]

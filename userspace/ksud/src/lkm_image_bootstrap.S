@@ -189,3 +189,5 @@ ksu_strndup_user_adapter:
     .balign 8
 ksu_empty_args:
     .asciz ""
+    /* Reserved for the injector's optional preinit=0 parameter. */
+    .zero 15

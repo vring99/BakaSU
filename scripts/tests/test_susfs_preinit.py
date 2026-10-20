@@ -1,4 +1,4 @@
-"""Link official SUSFS preinit calls and preserve Pro's normal init path."""
+"""Keep official SUSFS calls linkable when target UAPI headers are unavailable."""
 
 import ctypes
 import os
@@ -61,7 +61,7 @@ class SusfsPreinitTests(unittest.TestCase):
             with self.subTest(lto=lto):
                 result = subprocess.run(
                     [self.compiler, "--target=aarch64-linux-gnu", "-fuse-ld=lld", "-ffreestanding", "-nostdlib",
-                     "-Werror", "-Wl,-e,probe", "-Wl,--no-undefined", "-I", str(self.root),
+                     "-Werror", "-DKSU_NO_PREINIT=1", "-Wl,-e,probe", "-Wl,--no-undefined", "-I", str(self.root),
                      *(["-flto"] if lto else []), str(self.caller), *(str(source) for source in sources),
                      "-o", str(self.root / "vmlinux")], capture_output=True, text=True)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -71,7 +71,7 @@ class SusfsPreinitTests(unittest.TestCase):
         source = KERNEL / "compat/susfs_preinit.c"
         library = self.root / ("preinit.dll" if os.name == "nt" else "preinit.so")
         result = subprocess.run(
-            [self.compiler, "-shared", "-Werror", "-I", str(self.root), str(source),
+            [self.compiler, "-shared", "-Werror", "-DKSU_NO_PREINIT=1", "-I", str(self.root), str(source),
              *(["-Wl,--export-all-symbols"] if os.name == "nt" else ["-fPIC"]), "-o", str(library)],
             capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

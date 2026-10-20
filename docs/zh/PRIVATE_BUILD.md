@@ -151,9 +151,16 @@ Linux 内核本身仍须集成 SUSFS 官方的内核补丁，并启用 `CONFIG_K
 这部分仅支持内置 `CONFIG_KSU=y`，LKM 继续使用原有 Tracepoint 实现。
 SUSFS 模式由官方内核补丁选择调用入口，不再重复修改 SELinux 函数表。
 新版官方 SUSFS 还会调用 `ksu_setup_preinit_file` 和
-`ksu_preinit_handle_post_execveat`。Pro 尚未实现 preinit runner，因此通过
-`compat/susfs_preinit.c` 返回“不支持”，让官方补丁继续执行原有 init；不会创建
-preinit fd、改写 init 路径或替换执行结果。这部分仅随 SUSFS 编译，LKM 不接入。
+`ksu_preinit_handle_post_execveat`。Pro 已移植官方 KernelSU 的完整 preinit runner
+（`0faec0cc`，并包含 `e9ef3540` 的 Linux 6.19+ 兼容修复）。SUSFS 内置模式由官方
+补丁调用这两个接口，Tracepoint 模式从原有 execve 入口接入；正常启动的 GKI 和
+LKM 均可使用，要求 SUSFS 或 Tracepoint Hook；手动 Hook 和系统启动后才加载的
+late-load 模式不支持。
+runner 在 PID 1 执行 `/system/bin/init selinux_setup` 时运行模块的
+`preinit/preinit.conf`，完成后执行原来的 init；无法启动 runner 时回退原启动路径。
+构建依赖目标内核安装的 UAPI 头文件（`$(objtree)/usr/include`），缺失时按官方机制
+禁用 runner；此时 `compat/susfs_preinit.c` 仅保留“不支持”接口以避免链接失败。
+模块同步、失败启动计数、空间限制和恢复命令见 [PREINIT.md](PREINIT.md)。
 源码及接口检查不代表全部内核版本已完成真实编译或真机验证。
 
 LKM 流程对应 `CONFIG_KSU=m`，证书校验代码相同。不设置固定 `KSU_MANAGER_PACKAGE`，

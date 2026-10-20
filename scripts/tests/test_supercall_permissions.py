@@ -218,6 +218,18 @@ EXPORT int fds_installed(void) { return install_calls; }
                 for command in ("GET_MANAGER_APPID", "SET_APP_PROFILE", "DYNAMIC_MANAGER"):
                     self.assertEqual(lib.query(self.commands[command], 0), -1)
 
+    def test_symbol_lookup_is_root_only_even_with_su_authorization_or_scoped_fd(self):
+        self.assertIn("LOOKUP_SYMBOLS", self.commands)
+        for name, lib, _ in self.libraries:
+            with self.subTest(build=name):
+                for uid, manager, allowed in ((10287, 0, 0), (10287, 0, 1),
+                                               (10288, 1, 0), (2000, 0, 1)):
+                    lib.caller(uid, manager, allowed, 0)
+                    for session in (0, 1):
+                        self.assertEqual(lib.query(self.commands["LOOKUP_SYMBOLS"], session), -1)
+                lib.caller(0, 0, 0, 0)
+                self.assertEqual(lib.query(self.commands["LOOKUP_SYMBOLS"], 0), 41)
+
     def test_debug_build_does_not_implicitly_authorize_shell(self):
         for name, _, default in self.libraries:
             with self.subTest(build=name):
