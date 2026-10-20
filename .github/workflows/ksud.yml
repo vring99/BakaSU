@@ -68,13 +68,16 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: ksud-${{ inputs.target }}
+          # Old cache archives contain dependency source files; do not restore them.
+          prefix-key: ksud-build-v2-${{ inputs.target }}
           workspaces: userspace/ksud
-          cache-directories: userspace/ksuinit
           cache-targets: true
           add-job-id-key: false
           add-rust-environment-hash-key: false
           save-if: ${{ github.event_name != 'pull_request' }}
+
+      - name: Verify dependency sources match checkout
+        run: git diff --exit-code HEAD -- userspace/ksuinit
 
       - name: Setup cargo-ndk
         if: ${{ inputs.target != 'riscv64-linux-android' }}
