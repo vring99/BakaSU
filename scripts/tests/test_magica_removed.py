@@ -23,6 +23,17 @@ class MagicaRemovalTests(unittest.TestCase):
             if marker in manifest:
                 self.fail(f"stale manifest marker: {marker}")
 
+    def test_manifest_has_no_kernel_su_deep_link_entrypoints(self):
+        manifest = read("manager/app/src/main/AndroidManifest.xml")
+
+        for marker in (
+            'android:scheme="ksu"',
+            'android:host="action"',
+            'android:host="webui"',
+        ):
+            if marker in manifest:
+                self.fail(f"detector-visible deep-link marker: {marker}")
+
     def test_manager_has_no_magica_runtime_entrypoints(self):
         source_roots = (
             ROOT / "manager/app/src/main/java",
