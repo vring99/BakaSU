@@ -224,10 +224,7 @@
     <string name="license">رخصة: %s</string>
     <string name="no_license_text">لايوجد نص للرخصة.</string>
     <string name="jailbreak_mode">وضع جيلبريك</string>
-    <string name="home_jailbreak">جيلبريك</string>
-    <string name="jailbreak_timeout">الجيلبريك قد يكون فشل، رجاء تحقق من السجلات</string>
     <string name="jailbreak_flash_warning_countdown">تابع (%1$d)</string>
-    <string name="settings_auto_jailbreak">جيلبريك تلقائي</string>
     <string name="settings_selinux_hide_reboot_required">أعد التشغيل ليبدأ العمل</string>
     <string name="settings_selinux_hide_failed">خطأ: %d</string>
     <string name="home_learn_kernelsu_url">https://kernelsu.org/guide/what-is-kernelsu.html</string>

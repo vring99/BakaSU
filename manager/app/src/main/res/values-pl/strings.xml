@@ -149,12 +149,8 @@
     <string name="visit_home_page">Odwiedź stronę główną</string>
     <string name="no_license_text">Brak tekstu licencji.</string>
     <string name="jailbreak_mode">Tryb jailbreak</string>
-    <string name="home_jailbreak">Jailbreak</string>
-    <string name="jailbreak_timeout">Jailbreak mógł się nie powieść, sprawdź dziennik</string>
     <string name="jailbreak_flash_warning">Jesteś w **Trybie jailbreak**. Wgrywanie partycji na urządzeniu z **zablokowanym bootloaderem** uszkodzi AVB (Android Verified Boot) i może spowodować, że urządzenie **nie będzie się uruchamiać**.\n\nUpewnij się, że twój bootloader jest odblokowany zankm przejdziesz dalej!</string>
     <string name="jailbreak_flash_warning_countdown">Kontynuuj (%1$d)</string>
-    <string name="settings_auto_jailbreak">Automatyczny jailbreak</string>
-    <string name="settings_auto_jailbreak_summary">Automatycznie użyj Magica aby eskalować uprawnienia, gdy zezwalający SELinux zostanie wykryty podczas uruchamiania. Wymaga udzielenia tej aplikacji uprawnienia do autostartu.</string>
     <string name="settings_adb_root_summary">Uruchamiaj daemon adbd z uprawnieniami root</string>
     <string name="settings_selinux_hide_reboot_required">Uruchom ponownie, aby zastosować zmiany</string>
     <string name="settings_selinux_hide_failed">Błąd: %d</string>

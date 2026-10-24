@@ -1,5 +1,3 @@
-pub mod magica;
-
 use std::{ffi::CString, process::Command, time::Instant};
 
 use anyhow::{Context, Result};

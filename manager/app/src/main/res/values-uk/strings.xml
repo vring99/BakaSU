@@ -77,12 +77,8 @@
     <string name="send_log">Надіслати логи</string>
     <string name="safe_mode">Безпечний режим</string>
     <string name="jailbreak_mode">Режим Jailbreak</string>
-    <string name="home_jailbreak">Jailbreak</string>
-    <string name="jailbreak_timeout">Jailbreak, можливо, не вдався. Будь ласка, перевірте журнали</string>
     <string name="jailbreak_flash_warning">Ви перебуваєте в **режимі Jailbreak**. Прошивка розділу на пристрої із **заблокованим завантажувачем** порушить AVB (Android Verified Boot) і може призвести до **збою завантаження**.\n\nПереконайтеся, що завантажувач розблоковано, перш ніж продовжити!</string>
     <string name="jailbreak_flash_warning_countdown">Продовжити (%1$d)</string>
-    <string name="settings_auto_jailbreak">Автоматичний Jailbreak</string>
-    <string name="settings_auto_jailbreak_summary">Автоматично використовувати Magica для підвищення привілеїв при виявленні дозвільного SELinux під час завантаження. Потрібно надати цьому додатку дозвіл на автозапуск.</string>
     <string name="settings_adb_root_summary">Запускати демон adbd з правами root</string>
     <string name="settings_selinux_hide">Приховати зміни SELinux</string>
     <string name="settings_selinux_hide_summary">Запобігти виявленню додатками змін SELinux</string>

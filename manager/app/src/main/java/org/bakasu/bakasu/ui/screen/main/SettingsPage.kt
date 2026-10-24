@@ -30,7 +30,6 @@ import androidx.compose.material.icons.twotone.Adb
 import androidx.compose.material.icons.twotone.BugReport
 import androidx.compose.material.icons.twotone.Delete
 import androidx.compose.material.icons.twotone.DeleteForever
-import androidx.compose.material.icons.twotone.ElectricalServices
 import androidx.compose.material.icons.twotone.Extension
 import androidx.compose.material.icons.twotone.Fence
 import androidx.compose.material.icons.twotone.FolderDelete
@@ -242,24 +241,6 @@ fun SettingsPage(bottomPadding: Dp) {
                                         settingsViewModel.dispatch(
                                             SettingsUiAction.SetKernelUmount(
                                                 enabled,
-                                            ),
-                                        )
-                                    },
-                                )
-                            }
-
-                            item(
-                                visible = homeState.systemStatus.isLateLoadMode,
-                            ) {
-                                SettingsSwitchWidget(
-                                    icon = Icons.TwoTone.ElectricalServices,
-                                    title = stringResource(id = R.string.settings_auto_jailbreak),
-                                    description = stringResource(id = R.string.settings_auto_jailbreak_summary),
-                                    checked = uiState.autoJailbreakEnabled,
-                                    onCheckedChange = { value ->
-                                        settingsViewModel.dispatch(
-                                            SettingsUiAction.SetAutoJailbreak(
-                                                value,
                                             ),
                                         )
                                     },

@@ -1,7 +1,6 @@
 package org.bakasu.bakasu.ui.screen.main
 
 import android.content.Context
-import android.content.Intent
 import android.os.Build
 import android.os.PowerManager
 import android.system.Os
@@ -47,8 +46,6 @@ import androidx.compose.material.icons.twotone.TaskAlt
 import androidx.compose.material.icons.twotone.Tune
 import androidx.compose.material.icons.twotone.VolunteerActivism
 import androidx.compose.material.icons.twotone.Warning
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuGroup
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DropdownMenuPopup
@@ -69,7 +66,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -81,11 +77,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlin.time.Duration.Companion.milliseconds
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.bakasu.bakasu.BuildConfig
 import org.bakasu.bakasu.Natives.KernelPatchImplementation
 import org.bakasu.bakasu.R
@@ -94,12 +86,10 @@ import org.bakasu.bakasu.domain.model.KernelStatus
 import org.bakasu.bakasu.domain.model.ManagerUpdateChannel
 import org.bakasu.bakasu.domain.model.ManagerUpdateInfo
 import org.bakasu.bakasu.domain.usecase.EnqueueManagerUpdateUseCase
-import org.bakasu.bakasu.magica.MagicaService
 import org.bakasu.bakasu.ui.component.KsuIsValid
 import org.bakasu.bakasu.ui.component.SwipeableSnackbarHost
 import org.bakasu.bakasu.ui.component.WarningCard
 import org.bakasu.bakasu.ui.component.rememberConfirmDialog
-import org.bakasu.bakasu.ui.component.rememberLoadingDialog
 import org.bakasu.bakasu.ui.component.settings.SegmentedColumn
 import org.bakasu.bakasu.ui.component.settings.SettingsBaseWidget
 import org.bakasu.bakasu.ui.navigation.LocalNavigator
@@ -154,9 +144,6 @@ fun HomePage(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(topAppBarState)
     val scrollState = rememberScrollState()
     val navigator = LocalNavigator.current
-    val loadingDialog = rememberLoadingDialog()
-    val scope = rememberCoroutineScope()
-
     Scaffold(
         topBar = {
             TopBar(
@@ -323,23 +310,6 @@ fun HomePage(
                     onClickInstall = {
                         if (uiState.systemStatus.isLateLoadMode) return@StatusCard
                         navigator.push(Route.Install(preselectedKernelUri = null))
-                    },
-                    onClickJailbreak = {
-                        loadingDialog.showLoading()
-                        context.startService(Intent(context, MagicaService::class.java))
-                        // Manager will be force-stopped and restarted by late-load on success.
-                        // If that doesn't happen within timeout, jailbreak likely failed.
-                        scope.launch(Dispatchers.IO) {
-                            delay(30_000.milliseconds)
-                            withContext(Dispatchers.Main) {
-                                loadingDialog.hide()
-                                Toast.makeText(
-                                    context,
-                                    R.string.jailbreak_timeout,
-                                    Toast.LENGTH_LONG,
-                                ).show()
-                            }
-                        }
                     },
                 )
             }
@@ -576,7 +546,6 @@ private fun TopBar(
 private fun StatusCard(
     uiState: HomeUiState,
     onClickInstall: () -> Unit = {},
-    onClickJailbreak: () -> Unit = {},
 ) {
     val systemStatus = uiState.systemStatus
     val onClick = { _: Offset ->
@@ -646,22 +615,6 @@ private fun StatusCard(
                 title = stringResource(R.string.home_not_installed),
                 description = stringResource(R.string.home_click_to_install),
                 onClick = onClick,
-                trailingContent = if (systemStatus.isSELinuxPermissive) {
-                    {
-                        Button(
-                            onClick = onClickJailbreak,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error,
-                                contentColor = MaterialTheme.colorScheme.onError,
-                            ),
-
-                        ) {
-                            Text(stringResource(R.string.home_jailbreak))
-                        }
-                    }
-                } else {
-                    null
-                },
             )
         }
 

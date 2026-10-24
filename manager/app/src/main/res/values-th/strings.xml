@@ -152,12 +152,8 @@
     <string name="no_license_text">ไม่มีข้อความระบุเงื่อนไขการอนุญาตให้ใช้งาน</string>
     <string name="metamodule_uninstall_confirm">คุณแน่ใจหรือไม่ว่าต้องการถอนการติดตั้งโมดูล %s? การดำเนินการนี้จะส่งผลกระทบต่อโมดูลทั้งหมด และฟีเจอร์บางอย่างที่จัดเตรียมโดยเมตาโมดูล (เช่น Mounting) จะไม่สามารถใช้งานได้อีกต่อไป</string>
     <string name="jailbreak_mode">โหมด Jailbreak</string>
-    <string name="home_jailbreak">Jailbreak</string>
-    <string name="jailbreak_timeout">การเจลเบรกอาจล้มเหลว โปรดตรวจสอบบันทึกการทำงาน (logs)</string>
     <string name="jailbreak_flash_warning">คุณกำลังอยู่ใน **โหมด Jailbreak** การแฟลชพาร์ทิชันบนอุปกรณ์ที่ **ล็อก Bootloader** ไว้จะทำให้ระบบ AVB (Android Verified Boot) ทำงานไม่ได้ และอาจส่งผลให้ **บูตเครื่องไม่ขึ้น**\n\nโปรดตรวจสอบให้แน่ใจว่า Bootloader ของคุณได้รับการปลดล็อกแล้วก่อนที่จะดำเนินการต่อ!</string>
     <string name="jailbreak_flash_warning_countdown">ดำเนินการต่อ (%1$d)</string>
-    <string name="settings_auto_jailbreak">เจลเบรคอัตโนมัติ</string>
-    <string name="settings_auto_jailbreak_summary">ใช้ Magica เพื่อยกระดับสิทธิ์โดยอัตโนมัติเมื่อตรวจพบ SELinux ในโหมด Permissive ขณะบูตเครื่อง จำเป็นต้องให้สิทธิ์การเริ่มทำงานอัตโนมัติแก่แอปนี้</string>
     <string name="settings_adb_root_summary">รัน adbd daemon ด้วยสิทธิ์ root</string>
     <string name="settings_selinux_hide">ซ่อนการแก้ไข SELinux</string>
     <string name="settings_selinux_hide_summary">ป้องกันไม่ให้แอปพลิเคชันตรวจพบการแก้ไขปรับเปลี่ยน SELinux</string>

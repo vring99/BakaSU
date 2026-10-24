@@ -58,7 +58,6 @@ derive-new = "0.7"
 getopts = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 ksuinit = { path = "../ksuinit" }
-adb_client = { git = "https://github.com/Baka-SU/adb_client" }
 num_enum = "0.7"
 prop-rs-android = { git = "https://github.com/Baka-SU/ksu_props", rev = "ddb6ee7294467f7f25bad2118e9e24eee104144b" }
 

@@ -90,7 +90,6 @@ data class SettingsUiState(
     val suStatus: String = "",
     val kernelUmountStatus: String = "",
     val isKernelUmountEnabled: Boolean = false,
-    val autoJailbreakEnabled: Boolean = false,
     val adbRootStatus: String = "",
     val isAdbRootEnabled: Boolean = false,
     val sulogStatus: String = "",
@@ -135,7 +134,6 @@ sealed interface SettingsUiAction {
     data class SetModuleUpdateCheck(val enabled: Boolean) : SettingsUiAction
     data class SetSuCompatMode(val index: Int) : SettingsUiAction
     data class SetKernelUmount(val enabled: Boolean) : SettingsUiAction
-    data class SetAutoJailbreak(val enabled: Boolean) : SettingsUiAction
     data class SetSelinuxHide(val enabled: Boolean) : SettingsUiAction
     data class SetAdbRoot(val enabled: Boolean) : SettingsUiAction
     data class SetSuLog(val enabled: Boolean) : SettingsUiAction
@@ -370,11 +368,6 @@ class SettingsViewModel(
         }
     }
 
-    fun handleAutoJailbreakChange(enabled: Boolean) {
-        mutableState.update { it.copy(autoJailbreakEnabled = enabled) }
-        updatePlatformAsync(PlatformSetting.AutoJailbreak(enabled))
-    }
-
     fun handleAdbRootChange(checked: Boolean) {
         mutableState.update { it.copy(isAdbRootEnabled = checked) }
         updatePlatformAsync(PlatformSetting.AdbRoot(checked))
@@ -476,8 +469,6 @@ class SettingsViewModel(
 
             is SettingsUiAction.SetKernelUmount -> handleKernelUmountChange(action.enabled)
 
-            is SettingsUiAction.SetAutoJailbreak -> handleAutoJailbreakChange(action.enabled)
-
             is SettingsUiAction.SetSelinuxHide -> handleSelinuxHideChange(action.enabled)
 
             is SettingsUiAction.SetAdbRoot -> handleAdbRootChange(action.enabled)
@@ -554,7 +545,6 @@ class SettingsViewModel(
                 checkManagerUpdate = snapshot.checkManagerUpdate,
                 checkBetaUpdate = snapshot.checkBetaUpdate,
                 checkModuleUpdate = snapshot.checkModuleUpdate,
-                autoJailbreakEnabled = snapshot.autoJailbreakEnabled,
                 useBuiltinMonoFont = snapshot.useBuiltinMonoFont,
                 useSoftReboot = snapshot.useSoftReboot,
                 enableSwipeDismiss = snapshot.enableSwipeDismiss,

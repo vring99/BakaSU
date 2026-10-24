@@ -3,18 +3,6 @@
 version = 4
 
 [[package]]
-name = "adb_client"
-version = "3.1.1"
-source = "git+https://github.com/Baka-SU/adb_client#d97a966435bebaa55017834869dec08150826aa7"
-dependencies = [
- "byteorder",
- "log",
- "num_enum",
- "rand",
- "thiserror",
-]
-
-[[package]]
 name = "adler2"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -964,7 +952,6 @@ checksum = "a4933f3f57a8e9d9da04db23fb153356ecaf00cbd14aee46279c33dc80925c37"
 name = "ksud"
 version = "0.1.0"
 dependencies = [
- "adb_client",
  "android-bootimg",
  "android_logger",
  "anyhow",

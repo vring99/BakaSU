@@ -77,12 +77,8 @@
     <string name="send_log">Адправіць логі</string>
     <string name="safe_mode">Бяспечны рэжым</string>
     <string name="jailbreak_mode">Радзім Jailbreak</string>
-    <string name="home_jailbreak">Jailbreak</string>
-    <string name="jailbreak_timeout">Jailbreak можа быць пазбаўлены, звязаныя з аналітыкамі</string>
     <string name="jailbreak_flash_warning">Вы знаходзіцеся ў **рэжыме Jailbreak**. ПРАШЫЎКА РАЗДЗЕЛА НА ПРЫЛАДЗЕ З **ЗАБЛАКАВАНЫМ ЗАГРУЗЧЫКАМ** ПАРУШЫЦЬ РАБОТУ AVB (Android Verified Boot) І МОЖА ПРЫВЕСЦІ ДА **ЗБОЮ ЗАГРУЗКІ**.\n\nПераканайцеся, што ваш загрузчык разблакаваны перад тым, як працягваць!</string>
     <string name="jailbreak_flash_warning_countdown">Працягнуць (%1$d)</string>
-    <string name="settings_auto_jailbreak">Аўтаматычны Jailbreak</string>
-    <string name="settings_auto_jailbreak_summary">Аўтаматычна выкарыстоўваць Magica для павышэння прывілеяў, калі пры загрузцы выяўляецца дазвольны SELinux. Патрабуецца даць гэтаму дадатку дазвол на аўтазапуск.</string>
     <string name="settings_soft_reboot">Мяккі перазапуск замест перазагрузкі</string>
     <string name="settings_soft_reboot_summary">Выкарыстоўвайце мяккі перазапуск замест поўнага перазапуску пры ўсталёўцы, абнаўленні або пераключэнні модуляў.</string>
     <string name="settings_adb_root_summary">Запусціць дэман adbd з правамі root</string>

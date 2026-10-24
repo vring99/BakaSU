@@ -220,12 +220,8 @@
     <string name="license">Licencia: %s</string>
     <string name="no_license_text">No hay texto de licencia disponible.</string>
     <string name="jailbreak_mode">Modo Jailbreak</string>
-    <string name="home_jailbreak">Jailbreak</string>
-    <string name="jailbreak_timeout">Es posible que el jailbreak haya fallado, revisa los registros por favor.</string>
     <string name="jailbreak_flash_warning">Te encuentras en el **modo Jailbreak**. Flashear una partición en un dispositivo con el **bootloader bloqueado** romperá el AVB (Android Verified Boot) y podría provocar que el dispositivo **no arranque**.\n\n¡Asegúrate de que el bootloader esté desbloqueado antes de continuar!</string>
     <string name="jailbreak_flash_warning_countdown">Continuar (%1$d)</string>
-    <string name="settings_auto_jailbreak">Jailbreak automático</string>
-    <string name="settings_auto_jailbreak_summary">Utiliza automáticamente Magica para elevar privilegios cuando se detecta SELinux en modo Permisivo durante el arranque. Requiere conceder permiso de inicio automático a esta aplicación.</string>
     <string name="settings_soft_reboot">Reinicio suave en lugar de reinicio completo</string>
     <string name="settings_soft_reboot_summary">Utilice un reinicio suave en lugar de un reinicio completo al instalar, actualizar o activar/desactivar módulos.</string>
     <string name="settings_adb_root_summary">Ejecutar el demonio adb con privilegios de root</string>

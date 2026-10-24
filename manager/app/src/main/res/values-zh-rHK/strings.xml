@@ -77,12 +77,8 @@
     <string name="send_log">發送日誌</string>
     <string name="safe_mode">安全模式</string>
     <string name="jailbreak_mode">越獄模式</string>
-    <string name="home_jailbreak">越獄</string>
-    <string name="jailbreak_timeout">越獄可能失敗，請檢查日誌</string>
     <string name="jailbreak_flash_warning">當前處於**越獄模式**。喺**未解鎖 Bootloader** 嘅裝置上刷寫分區會破壞 AVB（Android 驗證啟動），可能導致裝置**無法開機**。\n\n請確保 Bootloader 已解鎖後再繼續操作！</string>
     <string name="jailbreak_flash_warning_countdown">繼續 (%1$d)</string>
-    <string name="settings_auto_jailbreak">自動越獄</string>
-    <string name="settings_auto_jailbreak_summary">開機檢測到 Permissive SELinux 時自動使用 Magica 提權。需要授予本應用程式自啟動權限。</string>
     <string name="settings_soft_reboot">使用軟重啟代替重啟</string>
     <string name="settings_soft_reboot_summary">安裝、更新或開關模組時使用軟重啟代替完整重啟</string>
     <string name="settings_adb_root_summary">以 root 權限運行守護 adbd 進程</string>

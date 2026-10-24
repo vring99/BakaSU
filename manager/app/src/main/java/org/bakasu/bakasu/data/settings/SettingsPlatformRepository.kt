@@ -19,7 +19,6 @@ import org.bakasu.bakasu.domain.model.AppearanceSetting
 import org.bakasu.bakasu.domain.model.PlatformFeatureStatus
 import org.bakasu.bakasu.domain.model.PlatformSetting
 import org.bakasu.bakasu.domain.model.SettingsPlatformSnapshot
-import org.bakasu.bakasu.magica.BootCompletedReceiver
 import org.bakasu.bakasu.ui.theme.BackgroundManager
 import org.bakasu.bakasu.ui.theme.CardConfig
 import org.bakasu.bakasu.ui.theme.ThemeConfig
@@ -84,7 +83,6 @@ class SettingsPlatformRepository(
             checkManagerUpdate = settings.getBoolean("check_update", true),
             checkBetaUpdate = settings.getBoolean("check_beta_update", true),
             checkModuleUpdate = loadModuleUpdatePreference(),
-            autoJailbreakEnabled = settings.getBoolean("auto_jailbreak", false),
             useBuiltinMonoFont = themeConfig.useBuiltinMonoFont,
             useSoftReboot = settings.getBoolean("use_soft_reboot", false),
             enableSwipeDismiss = settings.getBoolean("enable_swipe_dismiss", true),
@@ -193,8 +191,6 @@ class SettingsPlatformRepository(
 
             is PlatformSetting.Locale -> settings.putString("app_locale", setting.tag)
 
-            is PlatformSetting.AutoJailbreak -> setAutoJailbreak(setting.enabled)
-
             is PlatformSetting.AdbRoot -> setAdbRoot(setting.enabled)
 
             is PlatformSetting.SuCompatMode -> settings.putInt("su_compat_mode", setting.value)
@@ -292,19 +288,6 @@ class SettingsPlatformRepository(
         if (settings.getBoolean("is_first_run", true)) {
             settings.putBoolean("is_first_run", false)
         }
-    }
-
-    private fun setAutoJailbreak(enabled: Boolean) {
-        application.packageManager.setComponentEnabledSetting(
-            ComponentName(application, BootCompletedReceiver::class.java),
-            if (enabled) {
-                PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-            } else {
-                PackageManager.COMPONENT_ENABLED_STATE_DISABLED
-            },
-            PackageManager.DONT_KILL_APP,
-        )
-        settings.putBoolean("auto_jailbreak", enabled)
     }
 
     private fun setAdbRoot(enabled: Boolean) {

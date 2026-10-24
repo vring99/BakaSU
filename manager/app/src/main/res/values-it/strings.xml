@@ -119,12 +119,10 @@
     <string name="jailbreak_mode">Modalità jailbreak</string>
     <string name="settings_selinux_hide_reboot_required">Riavvio necessario</string>
     <string name="settings_selinux_hide">Nascondi modifica a SELinux</string>
-    <string name="settings_auto_jailbreak">Jailbreak automatico</string>
     <string name="metamodule_uninstall_confirm">Sei sicuro di voler disinstallare il modulo %s? Quest\'azione avrà effetti su tutti i moduli, certe funzionalità fornite dai metamoduli (come il montaggio) potrebbero smettere di funzionare</string>
     <string name="open_source_license">Licenze Open Source</string>
     <string name="reboot_soft">Riavvio</string>
     <string name="join_telegram_group_detail">Unisciti al nostro canale Telegram</string>
-    <string name="home_jailbreak">Jailbreak</string>
     <string name="settings_selinux_hide_summary">Impedisce alle applicazioni di rilevare modifiche a SELinux</string>
     <string name="settings_selinux_hide_failed">Errore: %d</string>
     <string name="home_learn_kernelsu_url">https://kernelsu.org/guide/what-is-kernelsu.html</string>
@@ -174,10 +172,8 @@
     <string name="visit_home_page">Visita la Home Page</string>
     <string name="license">Licenza: %s</string>
     <string name="no_license_text">Testo della licenza non disponibile.</string>
-    <string name="jailbreak_timeout">Il jailbreak potrebbe aver fallito, per favore controlla i log</string>
     <string name="jailbreak_flash_warning">Se in **modalità Jailbreak**. Flashare una partizione su un dispositivo con un **bootloader bloccato** romperà AVB (Android Verified Boot) e potrebbe impedire al dispositivo di **avviarsi\n\nAssicurati che il bootloader sia sbloccato prima di procedere!</string>
     <string name="jailbreak_flash_warning_countdown">Continua (%1$d)</string>
-    <string name="settings_auto_jailbreak_summary">Usa Magica automaticamente per aumentare i privilegi quando viene rilevato SELinux Permissivo all\'avvio. Richiede di garantire i permessi di avvio automatico a quest\'app.</string>
     <string name="settings_soft_reboot">Riavvio software invece di riavvio completo</string>
     <string name="settings_soft_reboot_summary">Usa il riavvio software invece di un riavvio completo quando si installa, aggiorna, o quando si attivano/disattivano moduli.</string>
     <string name="settings_adb_root_summary">Avvia il demone adbd con privilegi di root</string>

@@ -285,7 +285,6 @@
     <string name="license">Licenc: %s</string>
     <string name="no_license_text">Licencszövegezés nem elérhető.</string>
     <string name="jailbreak_mode">Jailbreak mód</string>
-    <string name="jailbreak_timeout">Jailbreak nem ment végbe, ellenőrizd a naplóbejegyzéseket</string>
     <string name="manage_app_profile">App Profile Sablonkezelő</string>
     <string name="predictive_back_animation_ksu_classic">KernelSU klasszikus</string>
     <string name="persistent">Tartós</string>
@@ -297,12 +296,9 @@
     <string name="sulog_filter_daemon_restart">Daemon újraindulás</string>
     <string name="sulog_filter_ioctl_grant_root">Root felhatalmazás</string>
     <string name="sulog_entry_unknown_event">Ismeretlen esemény</string>
-    <string name="home_jailbreak">Jailbreak</string>
     <string name="jailbreak_flash_warning_countdown">Folytatás (%1$d)</string>
-    <string name="settings_auto_jailbreak">Automatikus Jailbreak</string>
     <string name="settings_selinux_hide_failed">Hiba: %d</string>
     <string name="jailbreak_flash_warning">Úgy tűnik **Jailbreak üzemmódban** vagy. Lezárt bootloaderrel rendelkező készülék particiójára történő telepítés a beépített AVB (Android Verified Boot) protokoll töréséhez fog vezetni, és a készülék **újraindíthatatlanná** válhat.\n\nGyőződj meg róla, hogy a bootloader fel lett oldva mielőtt folytatnád!</string>
-    <string name="settings_auto_jailbreak_summary">Magica automatikus futtatása és jogosultságok kisajátítása amennyiben indításkor az SELinux állapot Engedélyező módban van. A működésért engedélyezd az applikáció számára, hogy háttérből újraindulhasson.</string>
     <string name="app_profile_import_export">Import/Export</string>
     <string name="sulog_event_dropped">Retusált eseménynapló bejegyzés</string>
     <string name="sulog_drop_count">%s elveszítve</string>

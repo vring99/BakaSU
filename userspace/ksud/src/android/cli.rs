@@ -60,10 +60,6 @@ enum Commands {
 
     /// Load kernelsu.ko and execute late-load stage scripts
     LateLoad {
-        /// Use adb root to execute late-load for jailbreaking by Magica
-        #[arg(long, default_missing_value = "5555", num_args = 0..=1)]
-        magica: Option<u16>,
-
         /// Pass allow_shell=1 when loading kernelsu.ko
         #[arg(long)]
         allow_shell: bool,
@@ -71,10 +67,6 @@ enum Commands {
         /// Do not run module preinit actions
         #[arg(long)]
         no_preinit: bool,
-
-        /// Restore adb properties after magica late-load
-        #[arg(long)]
-        post_magica: bool,
 
         /// Specify kernel KMI version instead of auto-detection
         #[arg(long)]
@@ -755,34 +747,12 @@ pub fn run() -> Result<()> {
             Sepolicy::Check { sepolicy } => sepolicy::check_rule(&sepolicy),
         },
         Commands::LateLoad {
-            magica,
             allow_shell,
             no_preinit,
-            post_magica,
             kmi,
             package_name,
         } => {
-            if let Some(port) = magica {
-                return crate::android::late_load::magica::run(
-                    port,
-                    &package_name,
-                    allow_shell,
-                    no_preinit,
-                )
-                .map_err(|e| {
-                    error!("Error running magica: {e}");
-                    e
-                });
-            }
-            let result =
-                crate::android::late_load::run(&package_name, kmi, allow_shell, no_preinit);
-            if post_magica {
-                info!("Restoring adb properties (post-magica cleanup)...");
-                if let Err(e) = crate::android::late_load::magica::disable_adb_root() {
-                    error!("disable adb root failed: {e}");
-                }
-            }
-            result
+            crate::android::late_load::run(&package_name, kmi, allow_shell, no_preinit)
         }
         Commands::Services => {
             if ksucalls::get_version() <= 0 {

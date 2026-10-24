@@ -77,12 +77,8 @@
     <string name="send_log">Günlükleri gönder</string>
     <string name="safe_mode">Güvenli mod</string>
     <string name="jailbreak_mode">Jailbreak modu</string>
-    <string name="home_jailbreak">Jailbreak</string>
-    <string name="jailbreak_timeout">Jailbreak başarısız olmuş olabilir, günlükleri kontrol edin</string>
     <string name="jailbreak_flash_warning">**Jailbreak modu**ndasınız. **Kilitli bootloader**a sahip bir cihazda bir bölümü flaşlarsanız AVB (Android Boot Doğrulaması) bozulup cihazınızın **boot olmamasına** neden olabilir.\n\nBaşlamadan önce bootloader kilidinizi açtığınıza emin olun!</string>
     <string name="jailbreak_flash_warning_countdown">Devam et (%1$d)</string>
-    <string name="settings_auto_jailbreak">Otomatik jailbreak</string>
-    <string name="settings_auto_jailbreak_summary">Boot sırasında SELinux durumu Permissive olarak algılanırsa otomatik olarak Magica\'yı kullanıp yetkileri yükseltir. Uygulamaya otomatik başlatma izni vermeyi gerektirir.</string>
     <string name="settings_adb_root_summary">Adbd arka plan hizmetini root yetkisi ile çalıştır</string>
     <string name="reboot_to_apply">Etkili olması için yeniden başlatın</string>
     <string name="module_magisk_conflict">Modüller Magisk\'le çakıştığı için kullanılamıyor!</string>
