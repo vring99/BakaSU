@@ -6,3 +6,4 @@ build.sh
 /userspace/ksud/.lkm_image_bootstrap.o
 /dist/
 __pycache__/
+out

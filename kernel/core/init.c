@@ -28,15 +28,16 @@
 #include "selinux/selinux.h"
 #include "hook/setuid_hook.h"
 #include "compat/kernel_compat.h"
-
+#include "feature/shell_su_adb_only.h"
 #include "feature/sulog.h"
 #include "feature/adb_root.h"
 #include "feature/dynamic_manager.h"
-#include "feature/module_load_filter.h"
+#include "feature/module_blacklist.h"
 #include "feature/sucompat.h"
 #include "feature/selinux_hide.h"
 #include "infra/symbol_resolver.h"
 #include "preinit/preinit.h"
+#include "uapi/supercall.h"
 
 #ifdef CONFIG_ARM64
 #include "compat/apatch_conflict.h"
@@ -173,14 +174,14 @@ int __init kernelsu_init(void)
     // manually ifdef in there...
 #ifdef MODULE
     #if defined(__x86_64__) 
-        pr_info("Initialized with driver version: %u, full_version: %s, ABI: x86-64, Work mode: LKM\n", KSU_VERSION, KSU_VERSION_FULL);
+        pr_info("Initialized with driver version: %u, full_version: %s, ABI: x86-64, Work mode: LKM, ksu_uapi_version: %d\n", KSU_VERSION, KSU_VERSION_FULL, KERNEL_SU_UAPI_VERSION);
     #elif defined(CONFIG_ARM64)
-        pr_info("Initialized with driver version: %u, full_version: %s, ABI: aarch64, Work mode: LKM\n", KSU_VERSION, KSU_VERSION_FULL);
+        pr_info("Initialized with driver version: %u, full_version: %s, ABI: aarch64, Work mode: LKM, ksu_uapi_version: %d\n", KSU_VERSION, KSU_VERSION_FULL, KERNEL_SU_UAPI_VERSION);
     #else
         #error Unsupported arch!
     #endif
 #else
-    pr_info("Initialized with driver version: %u, full_version: %s, ABI: %s, Work mode: Built-in\n", KSU_VERSION, KSU_VERSION_FULL, UTS_MACHINE);
+    pr_info("Initialized with driver version: %u, full_version: %s, ABI: %s, Work mode: Built-in, ksu_uapi_version: %d\n", KSU_VERSION, KSU_VERSION_FULL, UTS_MACHINE, KERNEL_SU_UAPI_VERSION);
 #endif
     // clang-format on
 
@@ -237,6 +238,7 @@ int __init kernelsu_init(void)
     ksu_sulog_init();
     ksu_adb_root_init();
     ksu_selinux_hide_init();
+    ksu_shell_su_adb_only_init();
 
     ksu_supercalls_init();
     ksu_app_profile_init();
@@ -270,6 +272,8 @@ int __init kernelsu_init(void)
         ksu_boot_completed = true;
         track_throne(TRACK_THRONE_FORCE_SYNCHRONOUS);
 
+        ksu_feature_apply_forced();
+
         if (!getenforce()) {
             pr_info("Permissive SELinux, enforcing\n");
             setenforce(true);
@@ -278,7 +282,7 @@ int __init kernelsu_init(void)
     } else {
         ksu_hook_init();
 
-        ksu_module_load_filter_hook_init();
+        ksu_module_blacklist_init(ksu_block_modules);
 
         ksu_allowlist_init();
 
@@ -304,6 +308,7 @@ void __exit kernelsu_exit(void)
     // Phase 1: Stop all hooks first to prevent new callbacks
     ksu_hook_exit();
     ksu_supercalls_exit();
+
     if (!ksu_late_loaded) {
         ksu_ksud_exit();
         ksu_preinit_exit();
@@ -319,11 +324,12 @@ void __exit kernelsu_exit(void)
 
     ksu_allowlist_exit();
 
+    ksu_shell_su_adb_only_exit();
     ksu_selinux_hide_exit();
     ksu_adb_root_exit();
     ksu_sulog_exit();
     ksu_feature_exit();
-    ksu_module_load_filter_hook_exit();
+    ksu_module_blacklist_exit();
 
     put_cred(ksu_cred);
 }

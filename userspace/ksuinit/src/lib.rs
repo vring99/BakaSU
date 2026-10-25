@@ -314,7 +314,8 @@ fn replace_module_vermagic(buffer: &mut Vec<u8>, required_vermagic: &str) -> Res
 
 type UndefinedSymbols = HashMap<String, (Sym, usize)>;
 
-/// Collect undefined symbols and their symbol-table file offsets.
+/// Collect the undefined symbols of an ELF kernel module, keyed by name, with
+/// the file offset of each symbol table entry.
 fn undefined_symbols(buffer: &[u8]) -> Result<(UndefinedSymbols, goblin::container::Ctx)> {
     let elf = Elf::parse(buffer)?;
     let ctx = *elf.syms.ctx();
@@ -352,7 +353,8 @@ fn bind_symbol(
     Ok(())
 }
 
-/// Resolve names against /proc/kallsyms, preserving the first matching address.
+/// Resolve `names` against /proc/kallsyms, one address per name. The first
+/// match in kallsyms order wins.
 pub fn resolve_kallsyms(names: &[&str]) -> Result<Vec<Option<u64>>> {
     let mut addrs = vec![None; names.len()];
     let mut pending: HashMap<&str, usize> = names
@@ -360,6 +362,7 @@ pub fn resolve_kallsyms(names: &[&str]) -> Result<Vec<Option<u64>>> {
         .enumerate()
         .map(|(i, name)| (*name, i))
         .collect();
+
     if !pending.is_empty() {
         for_each_kernel_symbols(|(symbol, addr)| {
             if let Some(i) = pending.remove(symbol.as_str()) {
@@ -374,17 +377,23 @@ pub fn resolve_kallsyms(names: &[&str]) -> Result<Vec<Option<u64>>> {
     Ok(addrs)
 }
 
+/// Relocate undefined symbols in an ELF kernel module buffer using /proc/kallsyms,
+/// then load it via init_module syscall.
 pub fn load_module(data: &[u8], params: &CStr) -> Result<()> {
     load_module_with_resolver(data, params, resolve_kallsyms)
 }
 
-/// Bind non-exported symbols before loading; unresolved names remain for the kernel loader.
+/// Relocate undefined symbols in an ELF kernel module buffer with `resolve`,
+/// then load it via init_module syscall. `resolve` gets all undefined symbol
+/// names at once and returns one address per name; symbols it does not know
+/// are left undefined for the kernel to bind against its exports.
 pub fn load_module_with_resolver<F>(data: &[u8], params: &CStr, resolve: F) -> Result<()>
 where
     F: FnOnce(&[&str]) -> Result<Vec<Option<u64>>>,
 {
     let mut buffer = data.to_vec();
     let (unresolved_symbols, ctx) = undefined_symbols(&buffer)?;
+
     if !unresolved_symbols.is_empty() {
         let names: Vec<&str> = unresolved_symbols.keys().map(String::as_str).collect();
         let addrs = resolve(&names).context("Cannot resolve symbols")?;
@@ -395,6 +404,7 @@ where
                 names.len()
             );
         }
+
         for (name, addr) in names.iter().zip(addrs) {
             match addr {
                 Some(addr) => bind_symbol(&mut buffer, unresolved_symbols[*name], addr, ctx)?,
@@ -406,6 +416,8 @@ where
     init_module_buffer(buffer, params)
 }
 
+/// Load a symbol-bound module image, retrying once with the kernel's vermagic
+/// when the first attempt is rejected over a vermagic mismatch.
 fn init_module_buffer(mut buffer: Vec<u8>, params: &CStr) -> Result<()> {
     let mut kmsg = match open_kmsg_at_end() {
         Ok(file) => Some(file),

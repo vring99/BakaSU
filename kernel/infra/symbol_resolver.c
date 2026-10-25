@@ -2,11 +2,15 @@
 #include <linux/kallsyms.h>
 #include <linux/module.h>
 #include <linux/mm.h>
+#include <linux/version.h>
+#include <linux/sched.h> // signal in lower kernel in sched.h
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
 #include <linux/sched/signal.h>
+#endif
 #include <linux/slab.h>
 #include <linux/sort.h>
 #include <linux/string.h>
-#include <linux/version.h>
+#include <linux/vmalloc.h>
 
 #include "klog.h" // IWYU pragma: keep
 #include "infra/symbol_resolver.h"
@@ -316,7 +320,7 @@ int __nocfi ksu_lookup_kernel_symbols(const char *const *names, unsigned long *a
     ctx = kzalloc(sizeof(*ctx), GFP_KERNEL);
     if (!ctx)
         return -ENOMEM;
-    ctx->entries = kvmalloc_array(count, sizeof(*ctx->entries), GFP_KERNEL);
+    ctx->entries = vmalloc(count * sizeof(*ctx->entries));
     if (!ctx->entries) {
         kfree(ctx);
         return -ENOMEM;
@@ -371,7 +375,7 @@ int __nocfi ksu_lookup_kernel_symbols(const char *const *names, unsigned long *a
         }
     }
 
-    kvfree(ctx->entries);
+    vfree(ctx->entries);
     kfree(ctx);
     return ret;
 }

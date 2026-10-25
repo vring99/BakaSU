@@ -23,9 +23,9 @@ typedef uint32_t u32;
 #define KSYM_NAME_LEN 128
 #define GFP_KERNEL 0
 #define kzalloc(n,f) calloc(1,n)
-#define kvmalloc_array(n,s,f) calloc(n,s)
+#define vmalloc(n) malloc(n)
 #define kfree(p) free(p)
-#define kvfree(p) free(p)
+#define vfree(p) free(p)
 #define sort(p,n,s,cmp,swap) qsort(p,n,s,cmp)
 #define ENOMEM 12
 #define EINTR 4

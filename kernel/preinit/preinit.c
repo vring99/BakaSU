@@ -10,15 +10,14 @@
 #include <linux/uaccess.h>
 #include <linux/version.h>
 
+#include "arch.h"
 #include "klog.h" // IWYU pragma: keep
 #include "compat/kernel_compat.h"
-#ifdef CONFIG_KSU_SUSFS
-#include "runtime/ksud.h"
-#else
-#include "hook/syscall_hook.h"
-#endif
 #include "preinit/preinit.h"
 
+// NOTE: This feature is ONLY compat for Android 10 and newer devices
+// Because when Android version below 10, the SELinux apply is in first_stage_init without a standalone execve call
+// See more: https://cs.android.com/android/platform/superproject/+/android-9.0.0_r1:system/core/init/init.cpp;l=623
 #define INIT_PATH "/system/bin/init"
 
 // The runner is a static ELF embedded into .init.rodata by preinit/blob.S.
@@ -53,7 +52,7 @@ void __init ksu_preinit_init(void)
         return;
     }
 
-    written = kernel_write(file, ksu_preinit_runner_start, size, &pos);
+    written = ksu_kernel_write_compat(file, ksu_preinit_runner_start, size, &pos);
     if (written != size) {
         pr_err("preinit: write runner failed: %zd\n", written);
         fput(file);
@@ -84,137 +83,12 @@ void ksu_preinit_exit(void)
     ksu_preinit_release();
 }
 
-#ifdef CONFIG_KSU_SUSFS
-static bool is_selinux_setup(struct user_arg_ptr *argv_user)
-{
-    static const char expected[] = "selinux_setup";
-    const char __user *arg;
-    char buf[sizeof(expected) + 1];
-
-    if (!argv_user)
-        return false;
-#ifdef CONFIG_COMPAT
-    if (unlikely(argv_user->is_compat)) {
-        compat_uptr_t compat;
-        if (!argv_user->ptr.compat || get_user(compat, argv_user->ptr.compat + 1))
-            return false;
-        arg = compat_ptr(compat);
-    } else
-#endif
-    {
-        if (!argv_user->ptr.native || get_user(arg, argv_user->ptr.native + 1))
-            return false;
-    }
-    if (!arg)
-        return false;
-    memset(buf, 0, sizeof(buf));
-    if (strncpy_from_user(buf, arg, sizeof(buf) - 1) < 0)
-        return false;
-    return !strcmp(buf, expected);
-}
-
-int ksu_setup_preinit_file(struct filename **filename_ptr, struct user_arg_ptr *argv_user)
+static bool ksu_preinit_handle_execve_common(int *fd_ptr, int *len_ptr, char *fd_path_ptr)
 {
     char fd_path[32] = { 0 };
     struct file *file;
-    struct path path;
-    int fd, len;
-
-    if (likely(!READ_ONCE(ksu_preinit_file)))
-        return -EINVAL;
-    if (!filename_ptr || !*filename_ptr || strcmp((*filename_ptr)->name, INIT_PATH) || !is_selinux_setup(argv_user))
-        return -EINVAL;
-
-    file = xchg(&ksu_preinit_file, NULL);
-    if (!file)
-        return -EINVAL;
-    fd = get_unused_fd_flags(O_CLOEXEC);
-    /* SUSFS uses positive descriptors to recognize the preinit handoff. */
-    if (fd == 0) {
-        fd = get_unused_fd_flags(O_CLOEXEC);
-        put_unused_fd(0);
-    }
-    if (fd < 0) {
-        pr_err("preinit: get fd failed: %d\n", fd);
-        fput(file);
-        return fd;
-    }
-    fd_install(fd, file);
-    len = snprintf(fd_path, sizeof(fd_path), "/proc/self/fd/%d", fd);
-    if (kern_path(fd_path, LOOKUP_FOLLOW, &path)) {
-        pr_err("preinit: %s not reachable, booting without preinit\n", fd_path);
-        ksu_close_fd(fd);
-        return -EINVAL;
-    }
-    path_put(&path);
-    memcpy((void *)(*filename_ptr)->name, fd_path, len + 1);
-    pr_info("preinit: exec runner via %s\n", fd_path);
-    return fd;
-}
-
-int ksu_preinit_handle_post_execveat(int *fd, struct filename **filename_ptr, void *argv_user, void *envp_user,
-                                     int *flags, int *retval, int *preinit_fd)
-{
-    if (*retval && *preinit_fd > 0) {
-        ksu_close_fd(*preinit_fd);
-        memcpy((void *)(*filename_ptr)->name, INIT_PATH, sizeof(INIT_PATH));
-        return -EINVAL;
-    }
-    return 0;
-}
-
-bool ksu_preinit_handle_execve(const char __user **filename_user, const char __user *const __user *argv_user,
-                               int orig_nr, struct pt_regs *regs, long *ret)
-{
-    return false;
-}
-#else
-static void __user *userspace_stack_buffer(const void *data, size_t len)
-{
-    char __user *p = (void __user *)current_user_stack_pointer() - len;
-
-    return copy_to_user(p, data, len) ? NULL : p;
-}
-
-static bool is_selinux_setup(const char __user *const __user *argv_user)
-{
-    static const char expected[] = "selinux_setup";
-    const char __user *arg;
-    char buf[sizeof(expected) + 1];
-
-    if (!argv_user || get_user(arg, argv_user + 1) || !arg)
-        return false;
-
-    memset(buf, 0, sizeof(buf));
-    if (strncpy_from_user(buf, arg, sizeof(buf) - 1) < 0)
-        return false;
-
-    return !strcmp(buf, expected);
-}
-
-bool ksu_preinit_handle_execve(const char __user **filename_user, const char __user *const __user *argv_user,
-                               int orig_nr, struct pt_regs *regs, long *ret)
-{
-    const char __user *orig_filename;
-    char path[sizeof(INIT_PATH) + 1];
-    char fd_path[32];
-    struct file *file;
     struct path p;
     int fd, len;
-
-    if (likely(!READ_ONCE(ksu_preinit_file)))
-        return false;
-
-    if (!filename_user || !*filename_user)
-        return false;
-
-    memset(path, 0, sizeof(path));
-    if (strncpy_from_user(path, (const char __user *)untagged_addr((unsigned long)*filename_user), sizeof(path) - 1) <
-        0)
-        return false;
-
-    if (strcmp(path, INIT_PATH) || !is_selinux_setup(argv_user))
-        return false;
 
     // One shot: the runner's own exec of the real init must pass through.
     file = xchg(&ksu_preinit_file, NULL);
@@ -239,6 +113,65 @@ bool ksu_preinit_handle_execve(const char __user **filename_user, const char __u
     }
     path_put(&p);
 
+    memcpy(fd_path_ptr, fd_path, len + 1);
+    *fd_ptr = fd;
+    *len_ptr = len;
+
+    return true;
+}
+
+static bool is_selinux_setup(struct user_arg_ptr *argv_user)
+{
+    static const char expected[] = "selinux_setup";
+    char buf[sizeof(expected) + 1] = { 0 };
+    const char __user *argv_user_ptr;
+
+    if (!argv_user)
+        return false;
+    argv_user_ptr = get_user_arg_ptr(*argv_user, 1);
+
+    if (!argv_user_ptr || IS_ERR(argv_user_ptr)) {
+        pr_err("!argv_user_ptr || IS_ERR(argv_user_ptr)\n");
+        return false;
+    }
+
+    if (strncpy_from_user(buf, argv_user_ptr, sizeof(buf) - 1) < 0)
+        return false;
+
+    return !strcmp(buf, expected);
+}
+
+#ifdef CONFIG_KSU_TRACEPOINT_HOOK
+#include "hook/syscall_hook.h"
+
+bool ksu_preinit_handle_execve_tracepoint(const char __user **filename_user, const char __user *const __user *argv_user,
+                                          int orig_nr, struct pt_regs *regs, long *ret)
+{
+    const char __user *orig_filename;
+    char path[sizeof(INIT_PATH) + 1];
+    char fd_path[32];
+    int fd, len;
+
+    if (likely(!READ_ONCE(ksu_preinit_file)))
+        return false;
+
+    if (!filename_user || !*filename_user)
+        return false;
+
+    memset(path, 0, sizeof(path));
+    if (strncpy_from_user(
+            path, (const char __user *)untagged_addr((unsigned long)ksu_task_user_ptr((unsigned long)*filename_user)),
+            sizeof(path) - 1) < 0)
+        return false;
+
+    struct user_arg_ptr argv = ksu_take_user_argv(argv_user);
+
+    if (strcmp(path, INIT_PATH) || !is_selinux_setup(&argv))
+        return false;
+
+    if (!ksu_preinit_handle_execve_common(&fd, &len, fd_path))
+        return false;
+
     orig_filename = *filename_user;
     *filename_user = userspace_stack_buffer(fd_path, len + 1);
     if (!*filename_user) {
@@ -248,13 +181,103 @@ bool ksu_preinit_handle_execve(const char __user **filename_user, const char __u
     }
 
     pr_info("preinit: exec runner via %s\n", fd_path);
-    *ret = ksu_syscall_table[orig_nr](regs);
+    *ret = ksu_call_syscall(orig_nr, regs);
     if (*ret < 0) {
         pr_err("preinit: exec runner failed: %ld, booting without preinit\n", *ret);
         *filename_user = orig_filename;
         ksu_close_fd(fd);
-        *ret = ksu_syscall_table[orig_nr](regs);
+        *ret = ksu_call_syscall(orig_nr, regs);
     }
     return true;
 }
+#elif defined(CONFIG_KSU_MANUAL_HOOK)
+void ksu_preinit_handle_execve_manual(const char **filename_ptr, struct user_arg_ptr *argv)
+{
+    char fd_path[32];
+    int fd, len;
+
+    char *filename = (char *)*filename_ptr;
+
+    if (likely(!READ_ONCE(ksu_preinit_file)))
+        return;
+
+    if (!filename)
+        return;
+
+    if (strcmp(filename, INIT_PATH) || !is_selinux_setup(argv))
+        return;
+
+    if (!ksu_preinit_handle_execve_common(&fd, &len, fd_path))
+        return;
+
+    // WARNING: fd leak and fail to start when execve failed!!!
+    // But we no choice, unless let user change hooker side
+
+    pr_info("preinit: exec runner via %s\n", fd_path);
+
+    // /system/bin/init should be bigger than /proc/self/fd/<fd>
+    memset(filename, 0, strlen(filename));
+    memcpy(filename, fd_path, len + 1);
+}
+#elif defined(CONFIG_KSU_SUSFS)
+int ksu_setup_preinit_file(struct filename **filename_ptr, struct user_arg_ptr *argv_user)
+{
+    char fd_path[32] = { 0 };
+    struct file *file;
+    struct path path;
+    int fd, len;
+
+    if (likely(!READ_ONCE(ksu_preinit_file)))
+        return -EINVAL;
+
+    if (!filename_ptr || !*filename_ptr || strcmp((*filename_ptr)->name, INIT_PATH) || !is_selinux_setup(argv_user))
+        return -EINVAL;
+
+    file = xchg(&ksu_preinit_file, NULL);
+    if (!file)
+        return -EINVAL;
+
+    fd = get_unused_fd_flags(O_CLOEXEC);
+    /* SUSFS uses positive descriptors to recognize the preinit handoff. */
+    if (fd == 0) {
+        fd = get_unused_fd_flags(O_CLOEXEC);
+        put_unused_fd(0);
+    }
+    if (fd < 0) {
+        pr_err("preinit: get fd failed: %d\n", fd);
+        fput(file);
+        return -EINVAL;
+    }
+    // The fd owns the file from here on; close-on-exec frees it once the
+    // runner has been loaded.
+    fd_install(fd, file);
+
+    len = snprintf(fd_path, sizeof(fd_path), "/proc/self/fd/%d", fd);
+    if (kern_path(fd_path, LOOKUP_FOLLOW, &path)) {
+        pr_err("preinit: %s not reachable, booting without preinit\n", fd_path);
+        ksu_close_fd(fd);
+        return -EINVAL;
+    }
+    path_put(&path);
+
+    memset((void *)(*filename_ptr)->name, 0, strlen((*filename_ptr)->name));
+    memcpy((void *)(*filename_ptr)->name, (void *)fd_path, strlen(fd_path));
+
+    pr_info("preinit: exec runner via %s\n", fd_path);
+    return fd;
+}
+
+int ksu_preinit_handle_post_execveat(int *fd, struct filename **filename_ptr, void *argv_user, void *envp_user,
+                                     int *flags, int *retval, int *preinit_fd)
+{
+    if (*retval && *preinit_fd > 0) {
+        ksu_close_fd(*preinit_fd);
+        memset((void *)(*filename_ptr)->name, 0, strlen((*filename_ptr)->name));
+        memcpy((void *)(*filename_ptr)->name, INIT_PATH, strlen(INIT_PATH));
+        return -EINVAL;
+    }
+    return 0;
+}
+#else
+#error Unsupported hook type
 #endif

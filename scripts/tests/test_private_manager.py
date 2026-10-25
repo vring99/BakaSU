@@ -27,6 +27,25 @@ def clang_path():
 
 
 class PrivateManagerTests(unittest.TestCase):
+    def test_exported_gki_patch_contains_all_new_kernel_dependencies(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            patch = root / "gki.patch"
+            PRIVATE.export_gki_patch(patch)
+            env = os.environ.copy()
+            env["GIT_INDEX_FILE"] = str(root / "index")
+            subprocess.run(["git", "read-tree", PRIVATE.GKI_BASE], cwd=ROOT, env=env, check=True)
+            subprocess.run(["git", "apply", "--cached", str(patch)], cwd=ROOT, env=env, check=True)
+            tracked = subprocess.check_output(["git", "ls-files"], cwd=ROOT, env=env, text=True).splitlines()
+            for dependency in (
+                "kernel/feature/shell_su_adb_only.c",
+                "kernel/feature/module_blacklist.c",
+                "kernel/tools/code_generation/preinit_runner/preinit_runner.mk",
+                "kernel/tools/code_generation/syscall_no/syscall_no.c",
+                "kernel/compat/susfs_preinit.c",
+            ):
+                self.assertTrue(dependency in tracked, f"GKI export cannot build without {dependency}")
+
     def test_public_certificate_matches_kernel(self):
         certificate = (ROOT / "docs/private-manager-cert.der").read_bytes()
         PRIVATE.check_certificate(certificate)

@@ -359,7 +359,7 @@ enum Module {
     /// list all modules
     List,
 
-    /// Preinit actions run before SELinux policy is loaded
+    /// preinit actions run before SELinux policy is loaded
     Preinit {
         #[command(subcommand)]
         command: PreinitCmd,
@@ -377,9 +377,9 @@ enum Module {
 
 #[derive(clap::Subcommand, Debug)]
 enum PreinitCmd {
-    /// Show per-module preinit state for the next boot
+    /// show per-module preinit state for the next boot
     Status,
-    /// Re-enable preinit after repeated failed boots
+    /// re-enable preinit after it was disabled by repeated failed boots
     Reset,
 }
 
@@ -477,7 +477,7 @@ enum Profile {
 enum Feature {
     /// Get feature value and support status
     Get {
-        /// Feature ID or name (su_compat, kernel_umount, sulog, adb_root, selinux_hide)
+        /// Feature ID or name (su_compat, kernel_umount, sulog, adb_root, selinux_hide, shell_su_adb_only)
         id: String,
         /// Read from config file
         #[arg(long, default_value_t = false)]
@@ -495,9 +495,9 @@ enum Feature {
     /// List all available features
     List,
 
-    /// Check feature status (supported/unsupported/managed)
+    /// Check feature status (supported/unsupported/managed/forced)
     Check {
-        /// Feature ID or name (su_compat, kernel_umount, sulog, adb_root, selinux_hide)
+        /// Feature ID or name (su_compat, kernel_umount, sulog, adb_root, selinux_hide, shell_su_adb_only)
         id: String,
     },
 
@@ -576,7 +576,7 @@ enum UmountOp {
 
 #[derive(clap::Subcommand, Debug)]
 enum Initrc {
-    /// Regenerate initrc and module preinit content
+    /// Regenerate preinit rc file and preinit dirs
     Refresh,
 }
 

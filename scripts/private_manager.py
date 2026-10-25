@@ -18,7 +18,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
 HEADER = ROOT / "kernel/manager/manager_sign.h"
-GKI_BASE = "d7260ca1e5c128061122924d0d48754e361e135c"
+GKI_BASE = "d5e9e025b8b49155f8014684d64c91742b465f65"
 GKI_FILES = [
     "kernel/Kbuild",
     "kernel/Kconfig",
@@ -293,7 +293,7 @@ def main():
     github = commands.add_parser("github-secrets", help="Configure the four signing secrets in your own GitHub repository")
     github.add_argument("--repo", required=True, help="Explicit destination in OWNER/REPO form")
     github.add_argument("--signing-properties", type=Path, default=SIGNING_PROPERTIES)
-    patch = commands.add_parser("gki-patch", help="Export public GKI integration changes for upstream BakaSU 35229")
+    patch = commands.add_parser("gki-patch", help="Export public GKI integration changes for upstream BakaSU d5e9e025")
     patch.add_argument("--output", type=Path, default=ROOT / "dist/gki-manager-signature.patch")
     package = commands.add_parser("package", help="Print an explicit or newly randomized application ID")
     package.add_argument("--name", default="")

@@ -105,13 +105,28 @@ python scripts/private_manager.py build --name com.example.bakasupro
 
 签名 secrets 不完整或与内核证书不一致时，流程立即失败，不使用调试签名代替。
 
+## 管理器自身更新源
+
+Pro 的应用内更新只查询 `vring99/BakaSU`，不会回退到官方仓库：
+
+- 稳定版查询本仓库的最新正式 Release，只识别 `BakaSU_Pro_...-release.apk`。
+- 测试版查询 `codex/build-35233` 分支的 `build-private-manager.yml` 成功构建，包含手动触发的构建。
+- 测试版下载最终重新打包、签名的 `BakaSU-Pro-release`，不是中间 Gradle 产物。
+- APK 匹配支持 `arm64-v8a`、`armeabi-v7a`、`x86_64`、`riscv64` 和 `universal`。
+
+未发布正式 Release 时，稳定版通道不会显示更新；Actions 产物过期后需重新构建。
+覆盖安装仍要求相同包名、相同签名和更高版本号。要更新现有安装，请在构建的
+`package_name` 输入原包名；留空仍按原规则生成随机包名，属于另一款应用，不能覆盖旧包。
+这次修改只有在重新编译、安装新 APK 后才会生效，已安装的旧管理器不会被源码修改自动改变。
+
 ## 接入 GKI 内核编译
 
 本仓库的 Actions 编译管理器和 LKM；GKI 的完整内核镜像继续由你的 GKI 内核仓库编译。
 推荐直接使用本分支的 kernel 源码，签名及下文的 SUSFS 适配均已内置，不需要额外补丁。
-仅为兼容仍使用官方 **35229** 的外部构建，Actions 保留导出
+外部构建使用官方 **d5e9e025b8b49155f8014684d64c91742b465f65** 为基线时，Actions 导出
 `gki-manager-signature.patch`，包含签名、信息查询权限和原生 SUSFS 适配所需文件。
-仓库内的旧副本 `docs/patches/gki-manager-signature-35229.patch` 只包含原有签名改动，
+同步上游后，补丁基线也已更新；新补丁不再面向官方 35229，避免遗漏新代码生成器和内核功能依赖。
+仓库内的旧副本 `docs/patches/gki-manager-signature-35229.patch` 仅为历史记录，
 不代表当前原生 SUSFS 接入代码；两者不能混用。
 应在 BakaSU 源码拉取后、真正编译前应用（命令在 BakaSU 源码根目录运行）：
 
@@ -201,5 +216,5 @@ su 会话 fd 仅保留原有的 `GET_WRAPPER_FD`、`DISABLE_ESCAPE_TO_ROOT` 两�
 修改上述内核认证文件后，在本仓库重新生成补丁：
 
 ```powershell
-python scripts/private_manager.py gki-patch --output docs/patches/gki-manager-signature-35229.patch
+python scripts/private_manager.py gki-patch --output dist/gki-manager-signature.patch
 ```

@@ -7,7 +7,8 @@ kernelsu-objs += feature/kernel_umount.o
 kernelsu-objs += feature/sulog.o
 kernelsu-objs += feature/adb_root.o
 kernelsu-objs += feature/selinux_hide.o
-kernelsu-objs += feature/module_load_filter.o
+kernelsu-objs += feature/shell_su_adb_only.o
+kernelsu-objs += feature/module_blacklist.o
 kernelsu-objs += hook/setuid_hook.o
 
 ifndef CONFIG_KSU_DISABLE_MANAGER
@@ -62,40 +63,6 @@ KDIR := $(KDIR)
 GIT_BIN := /usr/bin/env PATH="$$PATH":/usr/bin:/usr/local/bin git
 
 KSU_SRC := $(realpath $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
-
-# The runner is a static userspace ELF built against the target kernel UAPI.
-KSU_UAPI_INC := $(objtree)/usr/include
-KSU_PREINIT_HOOK := $(filter y,$(CONFIG_KSU_SUSFS) $(CONFIG_KSU_TRACEPOINT_HOOK))
-ifneq ($(and $(KSU_PREINIT_HOOK),$(wildcard $(KSU_UAPI_INC)/linux/unistd.h)),)
-kernelsu-objs += preinit/preinit.o
-kernelsu-objs += preinit/blob.o
-
-KSU_RUNNER_CFLAGS := $(CLANG_FLAGS) -std=gnu11 -Os -Wall \
-	-nostdinc -isystem $(shell $(CC) -print-file-name=include) \
-	-I$(KSU_SRC)/preinit/runner/nolibc -I$(KSU_UAPI_INC) \
-	-I$(KSU_SRC)/include -I$(KSU_SRC)/.. \
-	-ffreestanding -fno-stack-protector -fno-pic -fno-pie \
-	-fno-asynchronous-unwind-tables -fno-unwind-tables \
-	-ffunction-sections -fdata-sections
-
-quiet_cmd_ksu_runner = RUNNER  $@
-      cmd_ksu_runner = $(CC) $(KSU_RUNNER_CFLAGS) -c -o $@.o $< && \
-		$(LD) -static -nostdlib -e _start --gc-sections -s -o $@ $@.o && \
-		rm -f $@.o
-
-$(obj)/preinit/runner.elf: $(KSU_SRC)/preinit/runner/runner.c \
-		$(wildcard $(KSU_SRC)/preinit/runner/nolibc/*.h \
-			   $(KSU_SRC)/preinit/runner/nolibc/sys/*.h \
-			   $(KSU_SRC)/../uapi/*.h) FORCE
-	$(call if_changed,ksu_runner)
-
-targets += preinit/runner.elf
-$(obj)/preinit/blob.o: $(obj)/preinit/runner.elf
-asflags-y += -DKSU_PREINIT_RUNNER_BIN=\"$(obj)/preinit/runner.elf\"
-else
-$(warning -- $(REPO_NAME): preinit requires SUSFS/Tracepoint hooks and installed target UAPI headers, disabled)
-ccflags-y += -DKSU_NO_PREINIT
-endif
 
 LOCAL_GIT_EXISTS := $(shell test -e $(KSU_SRC)/../.git && echo 1 || echo 0)
 
@@ -202,7 +169,7 @@ ifdef CONFIG_KSU_TRACEPOINT_HOOK
     kernelsu-objs += hook/arm64/syscall_hook.o
   else ifeq ($(CONFIG_X86_64),y)
     kernelsu-objs += hook/x86_64/syscall_hook.o
-  else ifeq ($(CONFIG_RISCV),y
+  else ifeq ($(CONFIG_RISCV),y)
     kernelsu-objs += hook/riscv64/syscall_hook.o
   else
     ifeq ($(CONFIG_KSU), y)
@@ -260,6 +227,9 @@ ifndef CONFIG_KSU_TRACEPOINT_HOOK
 endif
 
 include $(KSU_SRC)/tools/kernel_compat.mk
+ifneq ($(CONFIG_KSU),)
+include $(KSU_SRC)/tools/code_generation/code_generation.mk
+endif
 
 # Custom Signs
 ifdef KSU_EXPECTED_SIZE
