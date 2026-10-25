@@ -261,7 +261,7 @@ int ksu_setup_preinit_file(struct filename **filename_ptr, struct user_arg_ptr *
     path_put(&path);
 
     memset((void *)(*filename_ptr)->name, 0, strlen((*filename_ptr)->name));
-    memcpy((void *)(*filename_ptr)->name, (void *)fd_path, strlen(fd_path));
+    memcpy((void *)(*filename_ptr)->name, fd_path, len + 1);
 
     pr_info("preinit: exec runner via %s\n", fd_path);
     return fd;
