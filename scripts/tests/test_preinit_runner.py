@@ -67,8 +67,14 @@ static struct file *exchange_file(struct file **p, struct file *v) {
 static struct file *shmem_file_setup(const char *n, size_t s, int f) {
     (void)n; (void)s; (void)f; return &runner_file;
 }
-static ssize_t kernel_write(struct file *f, const void *p, size_t n, loff_t *pos) {
+static ssize_t ksu_kernel_write_compat(struct file *f, const void *p, size_t n, loff_t *pos) {
     (void)f; (void)p; (void)pos; return n;
+}
+/* Model user-memory access without dereferencing invalid host addresses. */
+static const char *get_user_arg_ptr(struct user_arg_ptr argv, int nr) {
+    if (argv.is_compat)
+        return argv.ptr.compat ? compat_ptr(argv.ptr.compat[nr]) : (void *)(intptr_t)-14;
+    return argv.ptr.native ? argv.ptr.native[nr] : (void *)(intptr_t)-14;
 }
 static void fput(struct file *f) { (void)f; ++released; }
 static int get_unused_fd_flags(int f) {
@@ -139,16 +145,27 @@ EXPORT int probe(int mode) {
 """
 
 TRACEPOINT_SHIM = r"""
-struct pt_regs { int unused; };
+struct pt_regs { const char **filename; };
 static char userspace_buffer[128];
-static void *current_user_stack_pointer(void) { return userspace_buffer + sizeof(userspace_buffer); }
-static int copy_to_user(void *to, const void *from, size_t n) { memcpy(to, from, n); return 0; }
-#define untagged_addr(x) (x)
-static int exec_calls, fail_exec;
-static long test_exec(const struct pt_regs *r) {
-    (void)r; return fail_exec && ++exec_calls == 1 ? -2 : (++exec_calls, 0);
+static int fail_copy;
+static void *userspace_stack_buffer(const void *data, size_t len) {
+    if (fail_copy || len > sizeof(userspace_buffer)) return NULL;
+    void *ptr = userspace_buffer + sizeof(userspace_buffer) - len;
+    memcpy(ptr, data, len);
+    return ptr;
 }
-static long (*ksu_syscall_table[])(const struct pt_regs *) = {test_exec};
+static void *ksu_task_user_ptr(uintptr_t ptr) { return (void *)ptr; }
+static struct user_arg_ptr ksu_take_user_argv(const char *const *args) {
+    return (struct user_arg_ptr){.is_compat = false, .ptr.native = args};
+}
+#define untagged_addr(x) (x)
+static int exec_calls, fail_exec, wrong_exec;
+static long ksu_call_syscall(int nr, const struct pt_regs *regs) {
+    const char *expected = exec_calls ? "/system/bin/init" : "/proc/self/fd/7";
+    if (nr != 0 || strcmp(*regs->filename, expected)) wrong_exec = 1;
+    ++exec_calls;
+    return fail_exec && exec_calls == 1 ? -2 : 0;
+}
 """
 
 TRACEPOINT_PROBE = r"""
@@ -161,18 +178,26 @@ EXPORT int tracepoint_probe(int mode) {
     const char *original = mode == 1 ? "/system/bin/sh" : "/system/bin/init";
     const char *filename = original;
     const char *args[] = {original, mode == 2 ? "second_stage" : "selinux_setup", NULL};
-    struct pt_regs regs = {0};
+    struct pt_regs regs = {.filename = &filename};
     long ret = -99;
     int handled;
     ksu_preinit_release();
-    closed = released = installed = exec_calls = 0;
+    closed = released = installed = exec_calls = wrong_exec = 0;
+    zero_fd = fd_calls = unused_puts = 0;
+    fd_number = 7;
     fail_fd = mode == 3; fail_path = mode == 4; fail_exec = mode == 7;
+    fail_copy = mode == 8;
     ksu_preinit_enabled = mode != 5;
     ksu_preinit_init();
-    handled = ksu_preinit_handle_execve(&filename, mode == 6 ? NULL : args, 0, &regs, &ret);
-    if (mode >= 1 && mode <= 6) return !handled && filename == original && ret == -99;
-    if (mode == 7) return handled && ret == 0 && closed == 1 && filename == original;
-    return handled && !ret && !strcmp(filename, "/proc/self/fd/7");
+    handled = ksu_preinit_handle_execve_tracepoint(&filename, mode == 6 ? NULL : args, 0, &regs, &ret);
+    if (wrong_exec) return 0;
+    if (mode >= 1 && mode <= 6)
+        return !handled && filename == original && ret == -99 && exec_calls == 0;
+    if (mode == 7)
+        return handled && ret == 0 && closed == 1 && filename == original && exec_calls == 2;
+    if (mode == 8)
+        return !handled && filename == original && ret == -99 && closed == 1 && exec_calls == 0;
+    return handled && !ret && !strcmp(filename, "/proc/self/fd/7") && exec_calls == 1;
 }
 """
 
@@ -208,31 +233,47 @@ class PreinitRunnerTests(unittest.TestCase):
                     import _ctypes
                     _ctypes.FreeLibrary(lib._handle)
 
-    def test_runner_requires_installed_headers_and_a_supported_hook(self):
+    def test_runner_uses_existing_or_installed_headers_and_disables_if_unavailable(self):
         make = shutil.which("make")
         if not make:
             self.skipTest("GNU make is required")
-        source = (KERNEL / "Kbuild").read_text().split("LOCAL_GIT_EXISTS :=", 1)[0]
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / "Makefile").write_text(
-                source + '\nall:\n\t@echo "$(kernelsu-objs) $(ccflags-y)"\n')
-            for headers in (False, True):
-                if headers:
-                    include = root / "usr/include/linux"
-                    include.mkdir(parents=True)
-                    (include / "unistd.h").write_text("")
-                for hook in ("TRACEPOINT_HOOK", "SUSFS", "MANUAL_HOOK"):
-                    with self.subTest(headers=headers, hook=hook):
+        generator = KERNEL / "tools/code_generation/preinit_runner/preinit_runner.mk"
+        # Exercise the real generator, including its recursive headers_install.
+        for state, enabled, installs in (("existing", True, False),
+                                         ("installable", True, True),
+                                         ("unavailable", False, True)):
+            for hook in ("TRACEPOINT_HOOK", "SUSFS", "MANUAL_HOOK"):
+                with self.subTest(headers=state, hook=hook):
+                    with tempfile.TemporaryDirectory() as directory:
+                        root = Path(directory)
+                        kernel_tree = root / "kernel"
+                        kernel_tree.mkdir()
+                        header = root / "usr/include/linux/unistd.h"
+                        if state == "existing":
+                            header.parent.mkdir(parents=True)
+                            header.touch()
+                        install = '\t@touch "$(O)/headers-install-called"\n'
+                        if state == "installable":
+                            install += ('\t@mkdir -p "$(INSTALL_HDR_PATH)/include/linux"\n'
+                                        '\t@touch "$(INSTALL_HDR_PATH)/include/linux/unistd.h"\n')
+                        else:
+                            install += '\t@false\n'
+                        (kernel_tree / "Makefile").write_text("headers_install:\n" + install)
+                        (root / "Makefile").write_text(
+                            f'include {generator.as_posix()}\n'
+                            'all:\n\t@echo "$(kernelsu-objs) $(ccflags-y)"\n')
                         result = subprocess.run(
                             [make, "--no-print-directory", "all", "objtree=" + root.as_posix(),
+                             "srctree=" + kernel_tree.as_posix(), "obj=" + root.as_posix(),
+                             "KSU_SRC=" + KERNEL.as_posix(), "ARCH=arm64", "CC=" + self.compiler,
                              "CONFIG_KSU_" + hook + "=y"], cwd=root,
                             capture_output=True, text=True)
                         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                        enabled = headers and hook != "MANUAL_HOOK"
                         self.assertEqual("preinit/preinit.o" in result.stdout, enabled)
                         self.assertEqual("preinit/blob.o" in result.stdout, enabled)
                         self.assertEqual("-DKSU_NO_PREINIT" in result.stdout, not enabled)
+                        self.assertEqual((root / "headers-install-called").exists(), installs)
+                        self.assertEqual(header.exists(), enabled)
 
     def test_gki_export_contains_runner_and_symbol_dependencies(self):
         required = ["kernel/preinit", "kernel/infra/symbol_resolver.c",
@@ -245,8 +286,8 @@ class PreinitRunnerTests(unittest.TestCase):
     def test_tracepoint_handoff_and_original_init_retry(self):
         source = re.sub(r'^#include[^\n]*', '', (KERNEL / "preinit/preinit.c").read_text(), flags=re.M)
         # Linux uses LP64; the Windows test host uses LLP64.
-        source = source.replace('(unsigned long)*filename_user', '(uintptr_t)*filename_user')
-        shim = SHIM.replace('#define CONFIG_KSU_SUSFS 1', '')
+        source = source.replace('(unsigned long)', '(uintptr_t)')
+        shim = SHIM.replace('#define CONFIG_KSU_SUSFS 1', '#define CONFIG_KSU_TRACEPOINT_HOOK 1')
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             unit = root / "tracepoint.c"
@@ -259,7 +300,7 @@ class PreinitRunnerTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             lib = ctypes.CDLL(str(library))
             try:
-                for mode in range(8):
+                for mode in range(9):
                     with self.subTest(mode=mode):
                         self.assertEqual(lib.tracepoint_probe(mode), 1)
             finally:
