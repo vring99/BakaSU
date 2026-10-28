@@ -10,13 +10,6 @@ void ksu_selinux_hide_drop_backup_if_unused();
 void ksu_selinux_hide_handle_second_stage();
 void ksu_selinux_hide_handle_post_fs_data();
 
-#ifdef CONFIG_KSU_SUSFS
-struct file;
-ssize_t my_write_context(struct file *file, char *buf, size_t size);
-ssize_t my_write_access(struct file *file, char *buf, size_t size);
-int my_setprocattr(const char *name, void *value, size_t size);
-#endif
-
 // https://github.com/torvalds/linux/commit/b21507e272627c434e8dd74e8d51fd8245281b59
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0) || defined(KSU_COMPAT_SETPROCATTR_USE_NEW_PROTOTYPE)
 typedef int (*setprocattr_fn)(const char *name, void *value, size_t size);

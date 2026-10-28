@@ -83,7 +83,7 @@ void ksu_preinit_exit(void)
     ksu_preinit_release();
 }
 
-static bool ksu_preinit_handle_execve_common(int *fd_ptr, int *len_ptr, char *fd_path_ptr)
+inline bool ksu_preinit_handle_execve_common(int *fd_ptr, int *len_ptr, char *fd_path_ptr)
 {
     char fd_path[32] = { 0 };
     struct file *file;
@@ -124,11 +124,7 @@ static bool is_selinux_setup(struct user_arg_ptr *argv_user)
 {
     static const char expected[] = "selinux_setup";
     char buf[sizeof(expected) + 1] = { 0 };
-    const char __user *argv_user_ptr;
-
-    if (!argv_user)
-        return false;
-    argv_user_ptr = get_user_arg_ptr(*argv_user, 1);
+    const char __user *argv_user_ptr = get_user_arg_ptr(*argv_user, 1);
 
     if (!argv_user_ptr || IS_ERR(argv_user_ptr)) {
         pr_err("!argv_user_ptr || IS_ERR(argv_user_ptr)\n");
@@ -230,7 +226,7 @@ int ksu_setup_preinit_file(struct filename **filename_ptr, struct user_arg_ptr *
     if (likely(!READ_ONCE(ksu_preinit_file)))
         return -EINVAL;
 
-    if (!filename_ptr || !*filename_ptr || strcmp((*filename_ptr)->name, INIT_PATH) || !is_selinux_setup(argv_user))
+    if (strcmp((*filename_ptr)->name, INIT_PATH) || !is_selinux_setup(argv_user))
         return -EINVAL;
 
     file = xchg(&ksu_preinit_file, NULL);
@@ -238,11 +234,6 @@ int ksu_setup_preinit_file(struct filename **filename_ptr, struct user_arg_ptr *
         return -EINVAL;
 
     fd = get_unused_fd_flags(O_CLOEXEC);
-    /* SUSFS uses positive descriptors to recognize the preinit handoff. */
-    if (fd == 0) {
-        fd = get_unused_fd_flags(O_CLOEXEC);
-        put_unused_fd(0);
-    }
     if (fd < 0) {
         pr_err("preinit: get fd failed: %d\n", fd);
         fput(file);
@@ -261,7 +252,7 @@ int ksu_setup_preinit_file(struct filename **filename_ptr, struct user_arg_ptr *
     path_put(&path);
 
     memset((void *)(*filename_ptr)->name, 0, strlen((*filename_ptr)->name));
-    memcpy((void *)(*filename_ptr)->name, fd_path, len + 1);
+    memcpy((void *)(*filename_ptr)->name, (void *)fd_path, strlen(fd_path));
 
     pr_info("preinit: exec runner via %s\n", fd_path);
     return fd;

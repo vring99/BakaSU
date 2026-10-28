@@ -14,8 +14,6 @@ mod defs;
 mod feature_id;
 mod lkm_image;
 mod lkm_image_btf;
-#[cfg(any(target_os = "android", test))]
-mod preinit_policy;
 
 fn main() -> anyhow::Result<()> {
     #[cfg(target_os = "android")]

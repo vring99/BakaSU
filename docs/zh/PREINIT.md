@@ -1,5 +1,10 @@
 # 模块 preinit
 
+> 历史说明：本文描述的是 Pro 35268 的扩展实现。2026-10-28 对齐官方
+> BakaSU 35252 后，这些额外 SUSFS 适配、状态 UI 和恢复策略已撤销。
+> 本文不再作为当前版本的操作说明；当前行为以官方 35252 源码为准。
+> 不要依本文向当前版本传入 Pro 扩展参数。
+
 本实现移植自官方 KernelSU 提交
 [`0faec0cc`](https://github.com/tiann/KernelSU/commit/0faec0cc7b5f655170d89bf9c4d28bb5ca271fa2)，
 包含 [`e9ef3540`](https://github.com/tiann/KernelSU/commit/e9ef3540a0dc40db6743e9f619bf0066f78fad34)

@@ -1,7 +1,8 @@
-use std::{ffi::CString, process::Command, time::Instant};
+use std::{process::Command, time::Instant};
 
 use anyhow::{Context, Result};
 use log::{info, warn};
+use rustix::cstr;
 
 use crate::{
     android::{
@@ -41,12 +42,7 @@ fn dump_process_info(label: &str) {
     );
 }
 
-pub fn run(
-    package_name: &String,
-    kmi: Option<String>,
-    allow_shell: bool,
-    no_preinit: bool,
-) -> Result<()> {
+pub fn run(package_name: &String, kmi: Option<String>, allow_shell: bool) -> Result<()> {
     utils::daemonize(false)?;
     info!("late-load command triggered!");
     dump_process_info("late-load start");
@@ -70,15 +66,12 @@ pub fn run(
         // 4. Load kernelsu.ko from memory with manual relocation
         info!("Loading kernelsu.ko for KMI {kmi}...");
         // bundled flag is meaningless in jailbreak mode since we can't flash boot to update it.
-        let mut params = Vec::new();
-        if allow_shell {
-            params.push("allow_shell=1");
-        }
-        if no_preinit {
-            params.push("preinit=0");
-        }
-        let params = CString::new(params.join(" "))?;
-        ksuinit::load_module(&ko_data, &params).context("Failed to load kernelsu.ko")?;
+        let params = if allow_shell {
+            cstr!("allow_shell=1")
+        } else {
+            cstr!("")
+        };
+        ksuinit::load_module(&ko_data, params).context("Failed to load kernelsu.ko")?;
         info!("kernelsu.ko loaded successfully!");
         dump_process_info("after load_module");
     }
@@ -104,10 +97,6 @@ pub fn run(
 
     if let Err(e) = prune_modules() {
         warn!("prune modules failed: {e}");
-    }
-
-    if let Err(e) = crate::android::module::regenerate_preinit() {
-        warn!("regenerate preinit failed: {e:#}");
     }
 
     if let Err(e) = restorecon::restorecon() {

@@ -5,7 +5,6 @@
 use crate::{
     android::{restorecon::lsetfilecon, utils::ensure_dir_exists},
     defs,
-    preinit_policy::{self, BOOTCOUNT_LIMIT},
 };
 
 use anyhow::{Context, Result, bail};
@@ -25,10 +24,13 @@ const BLOCK: u64 = 4096;
 const LIMIT_TOTAL: u64 = 4 << 20;
 // Always leave this much free on /metadata: it also holds vold keys and OTA state
 const RESERVE: u64 = 8 << 20;
+// Must match BOOTCOUNT_LIMIT in the runner
+const BOOTCOUNT_LIMIT: u64 = 3;
 
 const STATE_OK: &str = "ok";
 const STATE_NO_SPACE: &str = "no_space";
 const STATE_ERROR: &str = "error";
+const STATE_BOOTLOOP: &str = "bootloop";
 const STATE_UNSUPPORTED: &str = "unsupported";
 
 /// A file or directory inside a module's preinit dir.
@@ -477,17 +479,22 @@ fn read_bootcount() -> u64 {
         .unwrap_or(0)
 }
 
+/// Preinit was skipped on this boot because the previous ones did not complete.
+fn disabled_by_bootloop() -> bool {
+    read_bootcount() > BOOTCOUNT_LIMIT
+}
+
 /// Boot completed: the preinit content that ran is fine. A parked counter is kept so that a
 /// module which broke boot is not retried on every other boot.
 pub fn on_boot_completed() {
     let count = read_bootcount();
-    if preinit_policy::disabled_by_bootloop(count) {
+    if count > BOOTCOUNT_LIMIT {
         warn!(
             "preinit was disabled after {BOOTCOUNT_LIMIT} failed boots, run `ksud module preinit reset` to retry"
         );
         return;
     }
-    if preinit_policy::reset_after_success(count) {
+    if count > 0 {
         fs::remove_file(bootcount_path()).ok();
     }
 }
@@ -502,10 +509,24 @@ pub fn reset_bootcount() -> Result<()> {
 
 /// Per-module preinit state for the next boot: ok, no_space, error or bootloop.
 pub fn module_states() -> HashMap<String, String> {
+    let bootloop = disabled_by_bootloop();
     let Ok(content) = fs::read_to_string(defs::PREINIT_STATUS_PATH) else {
         return HashMap::new();
     };
-    preinit_policy::module_states(&content, read_bootcount())
+    content
+        .lines()
+        .filter_map(|line| {
+            let mut parts = line.splitn(3, ' ');
+            let id = parts.next()?;
+            let state = parts.next()?;
+            let state = if bootloop && state == STATE_OK {
+                STATE_BOOTLOOP
+            } else {
+                state
+            };
+            Some((id.to_owned(), state.to_owned()))
+        })
+        .collect()
 }
 
 pub fn status_of(id: &str) -> Option<(String, String)> {
@@ -532,73 +553,4 @@ pub fn print_status() {
     }
     let content = fs::read_to_string(defs::PREINIT_STATUS_PATH).unwrap_or_default();
     print!("{content}");
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::os::unix::fs::symlink;
-
-    #[test]
-    fn scan_rejects_symlinks_in_preinit_payload() {
-        let tree = tempfile::tempdir().unwrap();
-        fs::write(tree.path().join("preinit.conf"), "exec helper\n").unwrap();
-        symlink("preinit.conf", tree.path().join("alias")).unwrap();
-        assert!(scan(tree.path(), Path::new(""), &mut Vec::new()).is_err());
-    }
-
-    #[test]
-    fn usage_accounts_for_directories_and_rounded_file_blocks() {
-        let tree = tempfile::tempdir().unwrap();
-        fs::create_dir(tree.path().join("bin")).unwrap();
-        fs::write(tree.path().join("bin/helper"), [0u8; 4097]).unwrap();
-        fs::write(tree.path().join("preinit.conf"), "exec bin/helper\n").unwrap();
-        let mut entries = Vec::new();
-        scan(tree.path(), Path::new(""), &mut entries).unwrap();
-        assert_eq!(usage(&entries), 5 * BLOCK);
-        assert_eq!(round_up(0), 0);
-        assert_eq!(round_up(BLOCK), BLOCK);
-        assert_eq!(round_up(BLOCK + 1), 2 * BLOCK);
-    }
-
-    #[test]
-    fn incremental_comparison_detects_changed_content_and_removed_files() {
-        let src = tempfile::tempdir().unwrap();
-        let dst = tempfile::tempdir().unwrap();
-        for tree in [src.path(), dst.path()] {
-            fs::write(tree.join("preinit.conf"), "exec helper\n").unwrap();
-            fs::set_permissions(tree.join("preinit.conf"), Permissions::from_mode(0o644)).unwrap();
-        }
-        let mut entries = Vec::new();
-        scan(src.path(), Path::new(""), &mut entries).unwrap();
-        assert!(same_copy(dst.path(), src.path(), &entries));
-        fs::write(dst.path().join("preinit.conf"), "exec broken\n").unwrap();
-        assert!(!same_copy(dst.path(), src.path(), &entries));
-        fs::remove_file(dst.path().join("preinit.conf")).unwrap();
-        assert!(!same_copy(dst.path(), src.path(), &entries));
-    }
-
-    #[test]
-    fn pruning_removes_unselected_and_interrupted_copies_but_keeps_manifest() {
-        let tree = tempfile::tempdir().unwrap();
-        for id in [
-            "enabled",
-            "disabled",
-            "removed",
-            ".update.tmp",
-            ".update.old",
-        ] {
-            fs::create_dir(tree.path().join(id)).unwrap();
-            fs::write(tree.path().join(id).join("preinit.conf"), "").unwrap();
-        }
-        fs::write(tree.path().join(defs::PREINIT_MANIFEST_FILE), "manifest").unwrap();
-        let mut changed = false;
-        remove_unlisted(tree.path(), &BTreeSet::from(["enabled"]), &mut changed).unwrap();
-        assert!(changed);
-        assert!(tree.path().join("enabled/preinit.conf").is_file());
-        assert!(tree.path().join(defs::PREINIT_MANIFEST_FILE).is_file());
-        for id in ["disabled", "removed", ".update.tmp", ".update.old"] {
-            assert!(!tree.path().join(id).exists());
-        }
-    }
 }

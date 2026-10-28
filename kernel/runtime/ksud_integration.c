@@ -41,7 +41,6 @@
 #include "ksu.h"
 #include "ksud.h"
 #include "ksud_boot.h"
-#include "preinit/preinit.h"
 #include "compat/kernel_compat.h"
 #include "policy/feature.h"
 #include "selinux/selinux.h"
@@ -275,7 +274,6 @@ void ksu_handle_execveat_ksud(char *filename, struct user_arg_ptr *argv, struct 
             char buf[16];
             if (!init_second_stage_executed && check_argv(*argv, 1, "--second-stage", buf, sizeof(buf))) {
                 pr_info("/init second_stage executed via argv1 check\n");
-                ksu_preinit_release();
 
                 // This detect only happen in Android 10 +
                 // But still init it to avoid we should handle more case
@@ -311,7 +309,6 @@ void ksu_handle_execveat_ksud(char *filename, struct user_arg_ptr *argv, struct 
                     if (!strcmp(env_name, "INIT_SECOND_STAGE") &&
                         (!strcmp(env_value, "1") || !strcmp(env_value, "true"))) {
                         pr_info("/init second_stage executed via envp check\n");
-                        ksu_preinit_release();
 
                         // This detect only happen in Android 10 +
                         // But still init it to avoid we should handle more case
@@ -619,7 +616,7 @@ static __always_inline void ksu_common_newfstat_ret(unsigned long fd_long, void 
     pr_info("%s: stat init.rc \n", __func__);
     load_module_rc_once();
 
-    uintptr_t statbuf_ptr_local = (uintptr_t)*(void **)statbuf_ptr;
+    uintptr_t statbuf_ptr_local = (uintptr_t) * (void **)statbuf_ptr;
     void __user *statbuf = (void __user *)statbuf_ptr_local;
     if (!statbuf)
         return;

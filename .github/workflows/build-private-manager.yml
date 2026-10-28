@@ -169,7 +169,7 @@ jobs:
       - name: Pack ksud with private LKM files and resign
         run: |
           python3 repack_apk_multi.py repack -c manager/private-signing/repack-config.json -b release -t release \
-            -a arm64-v8a -a armeabi-v7a -a x86_64 -a riscv64 --no-strip
+            -a arm64-v8a -a armeabi-v7a -a x86_64 -a riscv64 --strip
       - name: Verify every final APK
         env:
           MANAGER_PACKAGE: ${{ needs.prepare.outputs.package_name }}

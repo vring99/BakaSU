@@ -1,6 +1,8 @@
 # BakaSU Pro 私有构建
 
-基于 BakaSU 35229，基础提交为 `d7260ca1e5c128061122924d0d48754e361e135c`。
+运行时代码对齐 BakaSU 35252，基础提交为 `d5e9e025b8b49155f8014684d64c91742b465f65`。
+保留私有身份、更新源、权限收紧和 Magica/外部入口移除；其余运行时代码恢复官方基准。
+APK 版本号仍按 Pro 分支提交数递增，不降为 35252，以支持覆盖更新。
 应用名称为 **BakaSU Pro**。安装包名可以每次指定，留空时每次生成新的随机包名。
 Gradle 和 ksud 使用同一次构建选定的包名。内核依靠证书识别管理器，不依赖包名。
 管理器自检从同一份 `kernel/manager/manager_sign.h` 生成证书配置，避免私有签名被误报。
@@ -11,17 +13,18 @@ Gradle 和 ksud 使用同一次构建选定的包名。内核依靠证书识别�
 
 已确认自有仓库为 `https://github.com/vring99/BakaSU`。
 本地 `origin` 指向此仓库，官方仓库保留为 `upstream`。
-私有版本使用基于 35229 的 `codex/bakasu-pro-latest` 分支。
+当前私有版本使用 `codex/build-35233` 分支。
 后续修改完成后，可执行：
 
 ```powershell
-git add .
+# 仅暂存本次修改，不要包含 diagnostics 或签名私钥
+git add <本次修改的文件>
 git commit -m "Prepare BakaSU Pro private manager and GitHub builds"
-git push -u origin codex/bakasu-pro-latest
+git push -u origin codex/build-35233
 ```
 
 你的远端 `main` 已有上游提交；此处将私有版本推送为独立分支。
-推送后，在 GitHub 仓库设置中将默认分支切换为 `codex/bakasu-pro-latest`，
+推送后，在 GitHub 仓库设置中将默认分支切换为 `codex/build-35233`，
 GitHub 才会显示此分支新增工作流的手动运行按钮。
 
 配置签名只需做一次。安装并登录 GitHub CLI（`gh auth login`），设置 JDK 21 的 `JAVA_HOME`，
@@ -79,7 +82,9 @@ python scripts/private_manager.py build --name com.example.bakasupro
 ```
 
 脚本从本地 `signing.properties` 读取私钥配置，通过环境变量传递签名密码，执行
-`spotlessCheck`、`testDebugUnitTest`、`assembleRelease`、`lintRelease`，并核对 APK 的真实包名、名称和签名。
+`spotlessCheck`、`testDebugUnitTest`、`lintRelease`，通过后单独执行官方形式的
+`assembleRelease -Pcommit=<HEAD> -PKSU_PACKAGE_NAME=<包名> -PKSU_NAME="BakaSU Pro"`，
+并核对 APK 的真实包名、名称和签名。保留官方 Gradle/R8/CMake 配置；最终封装使用官方 `--strip`。
 `manager/app/build/outputs/apk/release/private-build.json` 记录本次包名、证书和文件 SHA-256。
 
 此阶段的 Gradle APK **尚未注入 ksud/LKM**；安装用的完整 APK 由下面的 Actions 流程打包。
@@ -122,9 +127,9 @@ Pro 的应用内更新只查询 `vring99/BakaSU`，不会回退到官方仓库�
 ## 接入 GKI 内核编译
 
 本仓库的 Actions 编译管理器和 LKM；GKI 的完整内核镜像继续由你的 GKI 内核仓库编译。
-推荐直接使用本分支的 kernel 源码，签名及下文的 SUSFS 适配均已内置，不需要额外补丁。
+推荐直接使用本分支的 kernel 源码，签名及权限收紧已内置，不需要重复应用私有补丁。
 外部构建使用官方 **d5e9e025b8b49155f8014684d64c91742b465f65** 为基线时，Actions 导出
-`gki-manager-signature.patch`，包含签名、信息查询权限和原生 SUSFS 适配所需文件。
+`gki-manager-signature.patch`，仅包含 Pro 签名、渠道署名和信息查询权限所需文件。
 同步上游后，补丁基线也已更新；新补丁不再面向官方 35229，避免遗漏新代码生成器和内核功能依赖。
 仓库内的旧副本 `docs/patches/gki-manager-signature-35229.patch` 仅为历史记录，
 不代表当前原生 SUSFS 接入代码；两者不能混用。
@@ -136,9 +141,9 @@ git apply /path/to/gki-manager-signature.patch
 ```
 
 如果使用本分支源码，直接使用已有的私有认证代码，不要重复应用补丁。
-本分支的 `kernel/setup.sh` 默认拉取 `vring99/BakaSU` 的
-`codex/bakasu-pro-latest` 分支。已有 `KernelSU` 目录不会自动替换远程仓库，
-接入时应确认实际 checkout 来自本分支，不能继续使用工作流中固定的官方提交。
+`kernel/setup.sh` 已恢复官方版本，不能用它的默认远程地址安装 Pro。
+需要私有身份时显式克隆 `vring99/BakaSU` 的 `codex/build-35233` 分支，
+或向上述固定官方基线应用本次导出的补丁。接入时必须确认实际源码提交。
 编译配置保持：
 
 ```text
@@ -146,37 +151,16 @@ CONFIG_KSU=y
 CONFIG_KSU_MULTI_MANAGER_SUPPORT=n
 ```
 
-### GKI + SUSFS 原生接入
+### GKI + SUSFS 接入边界
 
-本分支统一编译 `kernel/feature/selinux_hide.c`，SUSFS 和 Tracepoint 共用已有的
-SID 表同步和查询时序修复。旧的 `selinux_hide_susfs.c` 已移除，不需要在构建时下载
-KernelSU 的 `selinux_hide.c`、覆盖文件或删除 `Please wait susfs update` 阻断。
-Linux 内核本身仍须集成 SUSFS 官方的内核补丁，并启用 `CONFIG_KSU_SUSFS=y`。
-不要再向本分支应用官方 KernelSU 的 `10_enable_susfs_for_ksu.patch`。
+本次恢复了官方 35252 的 SELinux、preinit、SUSFS 接口检查和代码生成逻辑。
+此前 Pro 针对新版 SUSFS 增加的适配文件、额外 nolibc 架构头和模块 preinit 状态 UI
+已撤销，可从旧提交 `54983206` 恢复。`PREINIT.md` 仅保留为旧实现的历史说明。
 
-当前接入要求 SUSFS 官方 2026-10-19 的“Reuse upstream selinux_hide existing code”
-更新或包含相同接口的后续版本。官方内核补丁保持原样，由 SUSFS 的内联入口调用
-本分支导出的 KSU 函数：
-
-| 内核 | SUSFS SELinux 接口 |
-| --- | --- |
-| Android 12 / 5.10 至 Android 16 / 6.12 | `my_setprocattr`、`my_write_context`、`my_write_access` |
-
-编译前会检查这些接口是否已接入；旧版或缺失的接口会给出具体错误，不能仅删除检查。
-这部分仅支持内置 `CONFIG_KSU=y`，LKM 继续使用原有 Tracepoint 实现。
-SUSFS 模式由官方内核补丁选择调用入口，不再重复修改 SELinux 函数表。
-新版官方 SUSFS 还会调用 `ksu_setup_preinit_file` 和
-`ksu_preinit_handle_post_execveat`。Pro 已移植官方 KernelSU 的完整 preinit runner
-（`0faec0cc`，并包含 `e9ef3540` 的 Linux 6.19+ 兼容修复）。SUSFS 内置模式由官方
-补丁调用这两个接口，Tracepoint 模式从原有 execve 入口接入；正常启动的 GKI 和
-LKM 均可使用，要求 SUSFS 或 Tracepoint Hook；手动 Hook 和系统启动后才加载的
-late-load 模式不支持。
-runner 在 PID 1 执行 `/system/bin/init selinux_setup` 时运行模块的
-`preinit/preinit.conf`，完成后执行原来的 init；无法启动 runner 时回退原启动路径。
-构建依赖目标内核安装的 UAPI 头文件（`$(objtree)/usr/include`），缺失时按官方机制
-禁用 runner；此时 `compat/susfs_preinit.c` 仅保留“不支持”接口以避免链接失败。
-模块同步、失败启动计数、空间限制和恢复命令见 [PREINIT.md](PREINIT.md)。
-源码及接口检查不代表全部内核版本已完成真实编译或真机验证。
+这意味着先前依赖 Pro 扩展接口的外部 GKI/SUSFS 构建不能直接假定仍兼容。
+完整 GKI 构建和刷机不在本次范围；需要以实际内核源码及 SUSFS 补丁重新验证。
+不要删除官方兼容性检查来强行编译。本仓库 Release 工作流验证管理器和 LKM，
+不代表任意外部 GKI/SUSFS 组合已经通过编译或开机测试。
 
 LKM 流程对应 `CONFIG_KSU=m`，证书校验代码相同。不设置固定 `KSU_MANAGER_PACKAGE`，
 否则新随机包名可能被包名过滤提前拒绝。

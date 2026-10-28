@@ -480,17 +480,19 @@ pub fn prune_modules() -> Result<()> {
     Ok(())
 }
 
-// Older kernels only read the watchdog and default locations.
+// Kernels before this UAPI only look for modules.rc under /metadata/watchdog and /metadata.
+const PREINIT_VOLD_UAPI_VERSION: u32 = 6;
+
+// Prefer /metadata/vold/ when the kernel reads it, else /metadata/watchdog/, else /metadata.
 pub fn preinit_ksu_dir() -> &'static str {
-    use crate::preinit_policy::{Storage, storage};
-    match storage(
-        ksucalls::get_info().uapi_version,
-        Path::new("/metadata/vold").is_dir(),
-        Path::new("/metadata/watchdog").is_dir(),
-    ) {
-        Storage::Vold => defs::PREINIT_DIR_VOLD,
-        Storage::Watchdog => defs::PREINIT_DIR_WATCHDOG,
-        Storage::Default => defs::PREINIT_DIR_DEFAULT,
+    if ksucalls::get_info().uapi_version >= PREINIT_VOLD_UAPI_VERSION
+        && Path::new("/metadata/vold").is_dir()
+    {
+        defs::PREINIT_DIR_VOLD
+    } else if Path::new("/metadata/watchdog").is_dir() {
+        defs::PREINIT_DIR_WATCHDOG
+    } else {
+        defs::PREINIT_DIR_DEFAULT
     }
 }
 
@@ -537,12 +539,36 @@ fn collect_rc_files<P: AsRef<Path>>(
     Ok(())
 }
 
-/// Enabled modules for the next boot. Updates win; disable/remove in either tree vetoes them.
+/// Enabled modules for the next boot, by id. modules_update/ wins over modules/, and a disabled or
+/// removed module is skipped even if the other dir has an enabled copy.
 fn next_boot_modules() -> BTreeMap<String, PathBuf> {
-    crate::preinit_policy::next_boot_modules(&[
-        Path::new(defs::MODULE_UPDATE_DIR),
-        Path::new(defs::MODULE_DIR),
-    ])
+    let mut modules: BTreeMap<String, Option<PathBuf>> = BTreeMap::new();
+    for src_dir in [defs::MODULE_UPDATE_DIR, defs::MODULE_DIR] {
+        let Ok(entries) = std::fs::read_dir(src_dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let module_path = entry.path();
+            if !module_path.is_dir() {
+                continue;
+            }
+            let Some(id) = module_path.file_name().and_then(|s| s.to_str()) else {
+                continue;
+            };
+            let id = id.to_string();
+            if module_path.join(defs::DISABLE_FILE_NAME).exists()
+                || module_path.join(defs::REMOVE_FILE_NAME).exists()
+            {
+                modules.insert(id, None);
+                continue;
+            }
+            modules.entry(id).or_insert(Some(module_path));
+        }
+    }
+    modules
+        .into_iter()
+        .filter_map(|(id, path)| path.map(|path| (id, path)))
+        .collect()
 }
 
 /// Rebuild PREINITDIR/modules.rc by concatenating *.rc from every enabled
@@ -568,7 +594,7 @@ fn regenerate_preinit_rc(
 
         // collect common initrc first
         collect_rc_files(Path::new(defs::ADB_DIR).join("initrc.d"), None, &mut tmp)?;
-        // Then modules in alphabetical order, using their effective next-boot path.
+        // then modules in alphabetical order, with their effective module path in the next boot
         for (id, path) in modules {
             collect_rc_files(path.join(defs::MODULE_INIT_RC_DIR), Some(id), &mut tmp)?;
         }
@@ -591,10 +617,12 @@ fn regenerate_preinit_rc(
     Ok(())
 }
 
-/// Refresh both initrc and module preinit content for the next boot.
+/// Rebuild what the kernel picks up from the preinit partition on the next boot: modules.rc and
+/// the modules' preinit dirs.
 pub fn regenerate_preinit() -> Result<()> {
     let preinit_str = preinit_ksu_dir();
     let con = preinit_con(preinit_str);
+    // The candidates we are not using this boot; clean any leftover from them.
     let stale_strs: Vec<&str> = [
         defs::PREINIT_DIR_VOLD,
         defs::PREINIT_DIR_WATCHDOG,
@@ -604,10 +632,13 @@ pub fn regenerate_preinit() -> Result<()> {
     .filter(|d| *d != preinit_str)
     .collect();
     let modules = next_boot_modules();
+
     let rc = regenerate_preinit_rc(preinit_str, &modules, con);
+    // Clear stale modules.rc at the other candidate paths.
     for stale in &stale_strs {
         std::fs::remove_file(Path::new(stale).join(defs::MODULES_RC_FILE)).ok();
     }
+
     let stale_dirs: Vec<&Path> = stale_strs.iter().map(Path::new).collect();
     let preinit = crate::android::preinit::sync(
         Path::new(preinit_str),
@@ -1089,7 +1120,6 @@ fn list_module(path: &str) -> Vec<HashMap<String, String>> {
             .and_then(|id| preinit_states.get(id.as_str()))
         {
             module_prop_map.insert("preinit".to_owned(), state.clone());
-            module_prop_map.insert("preinit_status".to_owned(), state.clone());
         }
 
         resolve_module_icon_path(&mut module_prop_map, "actionIcon", &path);

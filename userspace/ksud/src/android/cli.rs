@@ -64,10 +64,6 @@ enum Commands {
         #[arg(long)]
         allow_shell: bool,
 
-        /// Do not run module preinit actions
-        #[arg(long)]
-        no_preinit: bool,
-
         /// Specify kernel KMI version instead of auto-detection
         #[arg(long)]
         kmi: Option<String>,
@@ -748,11 +744,10 @@ pub fn run() -> Result<()> {
         },
         Commands::LateLoad {
             allow_shell,
-            no_preinit,
             kmi,
             package_name,
         } => {
-            crate::android::late_load::run(&package_name, kmi, allow_shell, no_preinit)
+            crate::android::late_load::run(&package_name, kmi, allow_shell)
         }
         Commands::Services => {
             if ksucalls::get_version() <= 0 {

@@ -42,7 +42,6 @@ class PrivateManagerTests(unittest.TestCase):
                 "kernel/feature/module_blacklist.c",
                 "kernel/tools/code_generation/preinit_runner/preinit_runner.mk",
                 "kernel/tools/code_generation/syscall_no/syscall_no.c",
-                "kernel/compat/susfs_preinit.c",
             ):
                 self.assertTrue(dependency in tracked, f"GKI export cannot build without {dependency}")
 

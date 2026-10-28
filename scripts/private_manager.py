@@ -29,17 +29,6 @@ GKI_FILES = [
     "kernel/supercall/perm.c",
     "kernel/supercall/supercall.c",
     "kernel/supercall/dispatch.c",
-    "kernel/feature/selinux_hide.c",
-    "kernel/feature/selinux_hide.h",
-    "kernel/compat/susfs_preinit.c",
-    "kernel/compat/susfs_preinit.h",
-    "kernel/preinit",
-    "kernel/infra/symbol_resolver.c",
-    "kernel/infra/symbol_resolver.h",
-    "kernel/runtime/ksud_integration.c",
-    "kernel/hook/syscall_event_bridge.c",
-    "uapi/supercall.h",
-    "kernel/tools/susfs_compat.mk",
 ]
 SIGNING_PROPERTIES = ROOT / "manager/private-signing/signing.properties"
 PACKAGE_PATTERN = re.compile(r"[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+")
@@ -237,7 +226,11 @@ def build_manager(package, properties):
     for key, value in read_signing_properties(properties).items():
         environment[f"ORG_GRADLE_PROJECT_{key}"] = value
     executable = [str(ROOT / "manager/gradlew.bat")] if os.name == "nt" else ["bash", "./gradlew"]
-    subprocess.run(executable + ["spotlessCheck", "testDebugUnitTest", "assembleRelease", "lintRelease", "--no-configuration-cache"],
+    commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    arguments = [f"-Pcommit={commit}", f"-PKSU_PACKAGE_NAME={package}", "-PKSU_NAME=BakaSU Pro"]
+    subprocess.run(executable + ["spotlessCheck", "testDebugUnitTest", "lintRelease"] + arguments,
+                   cwd=ROOT / "manager", env=environment, check=True)
+    subprocess.run(executable + ["assembleRelease"] + arguments,
                    cwd=ROOT / "manager", env=environment, check=True)
     output = ROOT / "manager/app/build/outputs/apk/release"
     apks = sorted(output.glob("*.apk"))

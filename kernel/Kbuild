@@ -37,10 +37,6 @@ kernelsu-objs += supercall/dispatch.o
 kernelsu-objs += supercall/perm.o
 kernelsu-objs += supercall/supercall.o
 
-ifeq ($(CONFIG_KSU_SUSFS),y)
-kernelsu-objs += compat/susfs_preinit.o
-endif
-
 ifdef CONFIG_ARM64
 kernelsu-objs += compat/apatch_conflict.o
 endif
