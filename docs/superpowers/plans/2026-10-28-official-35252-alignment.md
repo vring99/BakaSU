@@ -95,3 +95,9 @@ upstream toolchain dependencies.
 - GKI export: reverse-check passed; isolated index based on d5e9e025 accepted the
   patch and matched all nine retained kernel sources exactly. actionlint and
   Python bytecode checks passed. diagnostics remains untracked and excluded.
+- First delivery commit 772db7665 pushed to user's origin. CI prepare ran all
+  25 native/identity/parity/recipe tests successfully, without skips.
+- Separate Lints Check run 40628686053 reproduced three concrete failures:
+  dispatch.c extra blank line, cli.rs single-expression arm formatting, and an
+  unused error import left after Magica removal. Removed only those residues;
+  the same CI checks are the RED/GREEN regression gate. No runtime policy change.

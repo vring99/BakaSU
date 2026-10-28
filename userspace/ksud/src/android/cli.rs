@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use android_logger::Config;
 use anyhow::{Context, Ok, Result};
 use clap::Parser;
-use log::{LevelFilter, error, info};
+use log::{LevelFilter, info};
 
 use crate::{
     android::{
@@ -746,9 +746,7 @@ pub fn run() -> Result<()> {
             allow_shell,
             kmi,
             package_name,
-        } => {
-            crate::android::late_load::run(&package_name, kmi, allow_shell)
-        }
+        } => crate::android::late_load::run(&package_name, kmi, allow_shell),
         Commands::Services => {
             if ksucalls::get_version() <= 0 {
                 info!("KernelSU not available, exiting services");
