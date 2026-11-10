@@ -38,6 +38,9 @@ class PrivateManagerTests(unittest.TestCase):
             subprocess.run(["git", "apply", "--cached", str(patch)], cwd=ROOT, env=env, check=True)
             tracked = subprocess.check_output(["git", "ls-files"], cwd=ROOT, env=env, text=True).splitlines()
             for dependency in (
+                "kernel/infra/btf_parser.c",
+                "kernel/infra/btf_parser.h",
+                "kernel/selinux/inode.c",
                 "kernel/feature/shell_su_adb_only.c",
                 "kernel/feature/module_blacklist.c",
                 "kernel/tools/code_generation/preinit_runner/preinit_runner.mk",

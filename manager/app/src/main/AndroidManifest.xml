@@ -40,6 +40,12 @@
         android:theme="@style/Theme.KernelSU"
         tools:targetApi="34"
         android:directBootAware="true">
+        <property
+            android:name="android.window.PROPERTY_ACTIVITY_EMBEDDING_ALLOW_SYSTEM_OVERRIDE"
+            android:value="false" />
+        <meta-data
+            android:name="LandscapeForPad"
+            android:value="true" />
         <activity
             android:name=".ui.MainActivity"
             android:exported="true"
@@ -57,6 +63,8 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:mimeType="application/zip" />
+                <data android:mimeType="application/x-zip-compressed" />
+                <data android:mimeType="application/x-zip" />
                 <data android:mimeType="application/vnd.android.package-archive" />
                 <data android:scheme="content" />
             </intent-filter>
@@ -64,12 +72,16 @@
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="application/zip" />
+                <data android:mimeType="application/x-zip-compressed" />
+                <data android:mimeType="application/x-zip" />
                 <data android:mimeType="application/vnd.android.package-archive" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.SEND_MULTIPLE" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="application/zip" />
+                <data android:mimeType="application/x-zip-compressed" />
+                <data android:mimeType="application/x-zip" />
                 <data android:mimeType="application/vnd.android.package-archive" />
             </intent-filter>
         </activity>
@@ -91,18 +103,24 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="content" />
                 <data android:mimeType="application/zip" />
+                <data android:mimeType="application/x-zip-compressed" />
+                <data android:mimeType="application/x-zip" />
                 <data android:mimeType="application/vnd.android.package-archive" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="application/zip" />
+                <data android:mimeType="application/x-zip-compressed" />
+                <data android:mimeType="application/x-zip" />
                 <data android:mimeType="application/vnd.android.package-archive" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.SEND_MULTIPLE" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="application/zip" />
+                <data android:mimeType="application/x-zip-compressed" />
+                <data android:mimeType="application/x-zip" />
                 <data android:mimeType="application/vnd.android.package-archive" />
             </intent-filter>
         </activity-alias>

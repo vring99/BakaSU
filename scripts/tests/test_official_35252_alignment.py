@@ -10,6 +10,21 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 BASELINE = "d5e9e025b8b49155f8014684d64c91742b465f65"
+# Reviewed maintenance backports; provenance is recorded in docs/UPSTREAM_SECURITY_BACKPORTS.md.
+BACKPORTED = {
+    "kernel/feature/selinux_hide.c",
+    "kernel/selinux/sepolicy.c",
+    "kernel/selinux/sepolicy.h",
+    "kernel/include/arch.h",
+    "kernel/hook/x86_64/syscall_hook.c",
+    "kernel/tools/code_generation/preinit_runner/preinit_runner.mk",
+    "manager/app/src/main/java/org/bakasu/bakasu/ui/NavContainer.kt",
+
+    "userspace/ksud/src/boot_patch.rs", "userspace/ksuinit/src/init.rs",
+    "kernel/infra/btf_parser.c", "kernel/infra/btf_parser.h",
+    "kernel/infra/file_wrapper.c", "kernel/selinux/inode.c",
+    "kernel/selinux/selinux.h", "kernel/selinux/rules.c",
+}
 RETAINED = {
     "kernel/Kbuild", "kernel/Kconfig", "kernel/core/init.c",
     "kernel/manager/apk_sign.c", "kernel/manager/manager_sign.h",
@@ -46,7 +61,7 @@ class Official35252AlignmentTests(unittest.TestCase):
         ).splitlines()
         unexpected = [
             path for path in changed
-            if path not in RETAINED
+            if path not in RETAINED and path not in BACKPORTED
             and not path.startswith("manager/app/src/test/")
             and not (path.startswith("manager/app/src/main/res/values") and path.endswith("/strings.xml"))
             and subprocess.run(

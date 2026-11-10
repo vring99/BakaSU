@@ -667,4 +667,5 @@
     <string name="superuser_root_access_required">加载应用列表需要 Root 权限。</string>
     <string name="superuser_service_start_failed">RootService 启动失败，请重试以加载应用列表。</string>
     <string name="superuser_packages_load_failed">从 RootService 加载应用列表失败，请重试。</string>
+    <string name="external_link_open_failed">无法打开链接</string>
 </resources>

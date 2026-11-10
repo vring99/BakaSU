@@ -20,11 +20,24 @@ ROOT = Path(__file__).resolve().parent.parent
 HEADER = ROOT / "kernel/manager/manager_sign.h"
 GKI_BASE = "d5e9e025b8b49155f8014684d64c91742b465f65"
 GKI_FILES = [
+    "kernel/feature/selinux_hide.c",
+    "kernel/selinux/sepolicy.c",
+    "kernel/selinux/sepolicy.h",
+    "kernel/include/arch.h",
+    "kernel/hook/x86_64/syscall_hook.c",
+    "kernel/tools/code_generation/preinit_runner/preinit_runner.mk",
+
     "kernel/Kbuild",
     "kernel/Kconfig",
     "kernel/manager/apk_sign.c",
     "kernel/manager/manager_sign.h",
     "kernel/core/init.c",
+    "kernel/infra/btf_parser.c",
+    "kernel/infra/btf_parser.h",
+    "kernel/infra/file_wrapper.c",
+    "kernel/selinux/inode.c",
+    "kernel/selinux/selinux.h",
+    "kernel/selinux/rules.c",
     "kernel/supercall/internal.h",
     "kernel/supercall/perm.c",
     "kernel/supercall/supercall.c",

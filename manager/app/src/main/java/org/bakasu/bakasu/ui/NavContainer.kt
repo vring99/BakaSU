@@ -46,6 +46,8 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -284,7 +286,21 @@ fun NavContainer(
         onResult = permissionRequestInterface::onPermissionRequestCallback,
     )
 
+    val externalUriHandler = LocalUriHandler.current
+    val safeUriHandler = remember(context, externalUriHandler) {
+        object : UriHandler {
+            override fun openUri(uri: String) {
+                try {
+                    externalUriHandler.openUri(uri)
+                } catch (_: IllegalArgumentException) {
+                    Toast.makeText(context, R.string.external_link_open_failed, Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
     CompositionLocalProvider(
+        LocalUriHandler provides safeUriHandler,
         LocalOverscrollFactory provides overscrollFactory,
         LocalStretchOverscrollCompensationState provides stretchOverscrollCompensationState,
         LocalPermissionRequestInterface provides permissionRequestInterface,

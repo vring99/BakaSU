@@ -26,6 +26,9 @@ KSU_RUNNER_CFLAGS := $(CLANG_FLAGS) -std=gnu11 -Os -Wall \
 	-fno-asynchronous-unwind-tables -fno-unwind-tables \
 	-ffunction-sections -fdata-sections
 
+KSU_RUNNER_LDFLAGS := -static -nostdlib -e _start --gc-sections -s \
+	-z max-page-size=0x10000 -z noseparate-code
+
 KSU_RUNNER_LIBS :=
 ifeq ($(ARCH),arm)
 KSU_RUNNER_LIBS := $(shell $(CC) $(CLANG_FLAGS) -print-libgcc-file-name)
@@ -34,7 +37,7 @@ endif
 quiet_cmd_ksu_runner = CC      $@
       cmd_ksu_runner = mkdir -p $(dir $@) && \
 		$(CC) $(KSU_RUNNER_CFLAGS) -c -o $@.o $< && \
-		$(LD) -static -nostdlib -e _start --gc-sections -s -o $@ $@.o $(KSU_RUNNER_LIBS) && \
+		$(LD) $(KSU_RUNNER_LDFLAGS) -o $@ $@.o $(KSU_RUNNER_LIBS) && \
 		rm -f $@.o
 
 $(KSU_RUNNER_TARGET): $(KSU_RUNNER_SRC)/runner.c \
