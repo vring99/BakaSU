@@ -1,5 +1,12 @@
 # Pro maintenance backports — 2026-11-10
 
+## Adaptive navigation alignment
+
+KernelSU `02ffbd447` WindowSize.kt is ported with only the package changed.
+Navigation and theme settings now use the actual Compose window size: width >= 840dp,
+or width >= 600dp and height/width < 1.2. Pro retains its navigation components
+and tablet Manifest declarations. This does not change OEM compatibility settings.
+
 Base: Pro `eb576bf3c`, with official BakaSU `d5e9e025b` runtime baseline.
 
 ## Imported changes

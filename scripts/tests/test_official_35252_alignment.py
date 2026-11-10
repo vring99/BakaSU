@@ -19,6 +19,8 @@ BACKPORTED = {
     "kernel/hook/x86_64/syscall_hook.c",
     "kernel/tools/code_generation/preinit_runner/preinit_runner.mk",
     "manager/app/src/main/java/org/bakasu/bakasu/ui/NavContainer.kt",
+    "manager/app/src/main/java/org/bakasu/bakasu/ui/util/WindowSize.kt",
+    "manager/app/src/main/java/org/bakasu/bakasu/ui/screen/themeSettings/themeSettings/ThemeSettings.kt",
 
     "userspace/ksud/src/boot_patch.rs", "userspace/ksuinit/src/init.rs",
     "kernel/infra/btf_parser.c", "kernel/infra/btf_parser.h",
