@@ -80,7 +80,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -119,6 +118,7 @@ import org.bakasu.bakasu.ui.theme.ThemeConfig
 import org.bakasu.bakasu.ui.theme.blurEffect
 import org.bakasu.bakasu.ui.theme.blurSource
 import org.bakasu.bakasu.ui.util.adaptiveScaffoldWindowInsets
+import org.bakasu.bakasu.ui.util.shouldShowSplitPane
 import org.bakasu.bakasu.ui.viewmodel.HomeUiAction
 import org.bakasu.bakasu.ui.viewmodel.HomeUiState
 import org.bakasu.bakasu.ui.viewmodel.HomeViewModel
@@ -520,9 +520,7 @@ private fun AppearanceSettings(
     val cardConfig: CardConfig = koinInject()
     val backgroundManager: BackgroundManager = koinInject()
     val paletteStyles = state.dynamicColorSpec.availablePaletteStyles()
-    val configuration = LocalConfiguration.current
-    val isPortrait = configuration.screenWidthDp < configuration.screenHeightDp ||
-        (configuration.screenHeightDp.toFloat() / configuration.screenWidthDp > 1.4f)
+    val isPortrait = !shouldShowSplitPane()
     SegmentedColumn(title = stringResource(R.string.appearance_settings)) {
         item {
             // 语言设置

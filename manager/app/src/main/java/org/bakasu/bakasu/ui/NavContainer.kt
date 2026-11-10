@@ -12,7 +12,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
@@ -108,6 +107,7 @@ import org.bakasu.bakasu.ui.util.LocalPortraitState
 import org.bakasu.bakasu.ui.util.LocalSnackbarHost
 import org.bakasu.bakasu.ui.util.LocalStretchOverscrollCompensationState
 import org.bakasu.bakasu.ui.util.rememberDeviceCornerRadius
+import org.bakasu.bakasu.ui.util.shouldShowSplitPane
 import org.bakasu.bakasu.ui.viewmodel.PredictiveBackAnimation
 import org.bakasu.bakasu.ui.viewmodel.SettingsViewModel
 import org.koin.compose.koinInject
@@ -646,7 +646,7 @@ private fun ManagerNavEntry(
         }
     }
 
-    BoxWithConstraints(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .onPreviewKeyEvent { transitionRunning }
@@ -664,7 +664,7 @@ private fun ManagerNavEntry(
                 if (backgroundRenderState.imagePainter == null) Modifier.background(MaterialTheme.colorScheme.surfaceContainer) else Modifier,
             ),
     ) {
-        val isPortrait = maxWidth < maxHeight || (maxHeight / maxWidth > 1.4f)
+        val isPortrait = !shouldShowSplitPane()
         val surfaceContainer = MaterialTheme.colorScheme.surfaceContainer
 
         CompositionLocalProvider(
