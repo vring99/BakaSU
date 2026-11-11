@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 BASELINE = "d5e9e025b8b49155f8014684d64c91742b465f65"
 # Reviewed maintenance backports; provenance is recorded in docs/UPSTREAM_SECURITY_BACKPORTS.md.
 BACKPORTED = {
+    "userspace/ksud/src/android/profile.rs",
     "kernel/feature/selinux_hide.c",
     "kernel/selinux/sepolicy.c",
     "kernel/selinux/sepolicy.h",

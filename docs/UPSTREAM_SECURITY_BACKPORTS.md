@@ -1,5 +1,12 @@
 # Pro maintenance backports — 2026-11-10
 
+## 35275 userspace security fixes
+
+- KernelSU `a23184a0e`: quote SELinux policy and profile/template arguments as literal Shell values; validate module IDs before running actions. Reuse Pro's existing single-quote helper and retain dedicated Shell handling.
+- KernelSU `dbb73665d`: validate profile names before directory creation or file access, rejecting empty names, dot/dot-dot, slashes, NUL and line breaks. Applied to Pro's android/profile.rs, preserving legacy template parsing compatibility.
+- Manager version code has a 35275 floor; subsequent Git-derived versions can advance normally.
+- Added Shell quoting and profile-path regression cases. Local provenance gate passes; Android build and executable regression results must be verified separately.
+
 ## Adaptive navigation alignment
 
 KernelSU `02ffbd447` WindowSize.kt is ported with only the package changed.

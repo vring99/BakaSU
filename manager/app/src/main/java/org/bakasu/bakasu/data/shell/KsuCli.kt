@@ -28,6 +28,8 @@ import org.bakasu.bakasu.domain.model.LkmSelection
 import org.json.JSONArray
 import org.json.JSONObject
 
+internal fun shellQuote(value: String): String = "'${value.replace("'", "'\"'\"'")}'"
+
 /**
  * @author weishu
  * @date 2023/1/1.
@@ -121,8 +123,6 @@ class KsuCliRepository(context: Context) {
     } else {
         ShellUtils.fastCmdResult(getRootShell(globalMnt), "${getKsuDaemonPath()} $args")
     }
-
-    private fun shellQuote(value: String): String = "'${value.replace("'", "'\"'\"'")}'"
 
     data class DynamicManagerCliConfig(
         val size: Int = 0,
@@ -342,6 +342,10 @@ class KsuCliRepository(context: Context) {
         onStdout: (String) -> Unit,
         onStderr: (String) -> Unit,
     ): Boolean {
+        if (!MODULE_ID_REGEX.matches(moduleId)) {
+            Log.e(TAG, "runModuleAction: rejecting invalid module id")
+            return false
+        }
         val stdoutCallback: CallbackList<String?> = object : CallbackList<String?>() {
             override fun onAddElement(s: String?) {
                 onStdout(s ?: "")
@@ -355,7 +359,7 @@ class KsuCliRepository(context: Context) {
         }
 
         val result = withNewRootShell(true) {
-            newJob().add("${getKsuDaemonPath()} module action $moduleId")
+            newJob().add("${getKsuDaemonPath()} module action ${shellQuote(moduleId)}")
                 .to(stdoutCallback, stderrCallback).exec()
         }
 
@@ -589,7 +593,7 @@ class KsuCliRepository(context: Context) {
         }
         val shell = getRootShell()
         val result =
-            shell.newJob().add("${getKsuDaemonPath()} sepolicy check '$rules'")
+            shell.newJob().add("${getKsuDaemonPath()} sepolicy check ${shellQuote(rules)}")
                 .to(ArrayList(), null)
                 .exec()
         return result.isSuccess
@@ -598,7 +602,7 @@ class KsuCliRepository(context: Context) {
     fun getSepolicy(pkg: String): String {
         val shell = getRootShell()
         val result =
-            shell.newJob().add("${getKsuDaemonPath()} profile get-sepolicy $pkg")
+            shell.newJob().add("${getKsuDaemonPath()} profile get-sepolicy ${shellQuote(pkg)}")
                 .to(ArrayList(), null)
                 .exec()
         Log.i(TAG, "code: ${result.code}, out: ${result.out}, err: ${result.err}")
@@ -607,7 +611,7 @@ class KsuCliRepository(context: Context) {
 
     fun setSepolicy(pkg: String, rules: String): Boolean {
         val shell = getRootShell()
-        val result = shell.newJob().add("${getKsuDaemonPath()} profile set-sepolicy $pkg '$rules'")
+        val result = shell.newJob().add("${getKsuDaemonPath()} profile set-sepolicy ${shellQuote(pkg)} ${shellQuote(rules)}")
             .to(ArrayList(), null).exec()
         Log.i(TAG, "set sepolicy result: ${result.code}")
         return result.isSuccess
@@ -622,21 +626,20 @@ class KsuCliRepository(context: Context) {
 
     fun getAppProfileTemplate(id: String): String {
         val shell = getRootShell()
-        return shell.newJob().add("${getKsuDaemonPath()} profile get-template '$id'")
+        return shell.newJob().add("${getKsuDaemonPath()} profile get-template ${shellQuote(id)}")
             .to(ArrayList(), null).exec().out.joinToString("\n")
     }
 
     fun setAppProfileTemplate(id: String, template: String): Boolean {
         val shell = getRootShell()
-        val escapedTemplate = template.replace("\"", "\\\"")
-        val cmd = """${getKsuDaemonPath()} profile set-template "$id" "$escapedTemplate""""
+        val cmd = "${getKsuDaemonPath()} profile set-template ${shellQuote(id)} ${shellQuote(template)}"
         return shell.newJob().add(cmd)
             .to(ArrayList(), null).exec().isSuccess
     }
 
     fun deleteAppProfileTemplate(id: String): Boolean {
         val shell = getRootShell()
-        return shell.newJob().add("${getKsuDaemonPath()} profile delete-template '$id'")
+        return shell.newJob().add("${getKsuDaemonPath()} profile delete-template ${shellQuote(id)}")
             .to(ArrayList(), null).exec().isSuccess
     }
 
