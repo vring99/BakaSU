@@ -86,6 +86,68 @@ static u32 ksu_original_types_generation;
 
 #define avtab_for_each(avtab, cur) ksu_hash_for_each(avtab.htable, avtab.nslot, cur)
 
+#if defined(CONFIG_KSU_SUSFS) && defined(KSU_COMPAT_HAS_SUSFS_SELINUX_POLICY_RECORDS)
+/* Match fs/susfs.c, including its u32 class argument. */
+extern int susfs_add_sus_type(const char *secctx, u32 type_value);
+extern int susfs_add_sus_avd_allowed_by_type(u32 s_type, u32 t_type, u32 c_type, u32 orig_avd_allowed);
+#endif
+
+/* Called under the policy writer mutex, immediately before publication.
+ * Recording inside add_type/add_rule_raw would leak discarded batch changes
+ * into SUSFS's global tables. Those tables keep the first allowed value for a
+ * key, so record only AVTAB_ALLOWED, never audit or extended-permission data.
+ */
+void ksu_susfs_record_policy(struct policydb *old_db, struct policydb *new_db)
+{
+#if defined(CONFIG_KSU_SUSFS) && defined(KSU_COMPAT_HAS_SUSFS_SELINUX_POLICY_RECORDS)
+    struct hashtab_node *type_node;
+    struct avtab_node *node, *other;
+    unsigned int failures = 0;
+
+    ksu_hashtab_for_each(new_db->p_types.table, type_node)
+    {
+        struct type_datum *type = type_node->datum;
+
+        /* Existing platform types and attributes are not new contexts. */
+        if (!type->attribute && type->value > old_db->p_types.nprim && susfs_add_sus_type(type_node->key, type->value))
+            failures++;
+    }
+
+    /* Changed or removed rules must retain their pre-update allowed bits. */
+    {
+        avtab_for_each(old_db->te_avtab, node)
+        {
+            if (node->key.specified != AVTAB_ALLOWED)
+                continue;
+            other = avtab_search_node(&new_db->te_avtab, &node->key);
+            if ((!other || other->datum.u.data != node->datum.u.data) &&
+                susfs_add_sus_avd_allowed_by_type(node->key.source_type, node->key.target_type, node->key.target_class,
+                                                  node->datum.u.data))
+                failures++;
+        }
+    }
+
+    /* Newly added rules had no allowed bits in the previous policy. */
+    {
+        avtab_for_each(new_db->te_avtab, node)
+        {
+            if (node->key.specified != AVTAB_ALLOWED || !node->datum.u.data)
+                continue;
+            if (!avtab_search_node(&old_db->te_avtab, &node->key) &&
+                susfs_add_sus_avd_allowed_by_type(node->key.source_type, node->key.target_type, node->key.target_class,
+                                                  0))
+                failures++;
+        }
+    }
+
+    /* SUSFS has no transactional rollback API. Preserve policy enforcement
+     * and report incomplete query hiding instead of aborting halfway through.
+     */
+    if (failures)
+        pr_err("SUSFS SELinux policy records incomplete: %u failures\n", failures);
+#endif
+}
+
 static struct avtab_node *get_avtab_node(struct policydb *db, struct avtab_key *key,
                                          struct avtab_extended_perms *xperms)
 {

@@ -313,6 +313,7 @@ void apply_kernelsu_rules()
     ksu_allow(db, "system_server", KERNEL_SU_DOMAIN, "process", "sigkill");
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || defined(KSU_COMPAT_HAS_POLICY_MUTEX)
+    ksu_susfs_record_policy(&old_pol->policydb, db);
     rcu_assign_pointer(selinux_state.policy, pol);
     synchronize_rcu();
     ksu_destroy_sepolicy(old_pol);
@@ -321,6 +322,7 @@ void apply_kernelsu_rules()
 out_unlock:
     mutex_unlock(&selinux_state.policy_mutex);
 #else
+    ksu_susfs_record_policy(policydb_ptr, newpolicydb);
     /* Save the old policydb to free later. */
     memcpy(oldpolicydb, policydb_ptr, sizeof(*policydb_ptr));
 
@@ -721,6 +723,7 @@ int handle_sepolicy(void __user *user_data, u64 data_len)
     pol->latest_granting = old_pol->latest_granting + 1;
     if (!ksu_advance_original_types(db, &old_pol->policydb, old_pol->latest_granting, pol->latest_granting))
         pr_warn("failed to carry original type metadata, use backup lookups\n");
+    ksu_susfs_record_policy(&old_pol->policydb, db);
     rcu_assign_pointer(selinux_state.policy, pol);
     synchronize_rcu();
     ksu_destroy_sepolicy(old_pol);
@@ -735,6 +738,7 @@ out_unlock:
     mutex_unlock(&selinux_state.policy_mutex);
 #else
     ret = success_cmd_count;
+    ksu_susfs_record_policy(policydb_ptr, newpolicydb);
     /* Save the old policydb to free later. */
     memcpy(oldpolicydb, policydb_ptr, sizeof(*policydb_ptr));
 

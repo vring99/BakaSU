@@ -7,6 +7,15 @@ $(info -- $(REPO_NAME)/susfs_feature_check: selinux_hide manual hook found)
 ccflags-y += -DKSU_COMPAT_HAS_SUSFS_FEATURE_SELINUX_HIDE
 endif
 
+# SUSFS 2.4 context/access queries consume policy records. Older manual hooks
+# do not provide these APIs; detect both definitions rather than the version.
+ifeq ($(CONFIG_KSU_SUSFS),y)
+ifeq ($(shell grep -Eq '^int susfs_add_sus_type\>' $(srctree)/fs/susfs.c && grep -Eq '^int susfs_add_sus_avd_allowed_by_type\>' $(srctree)/fs/susfs.c; echo $$?),0)
+$(info -- $(REPO_NAME)/susfs_feature_check: SELinux policy record API found)
+ccflags-y += -DKSU_COMPAT_HAS_SUSFS_SELINUX_POLICY_RECORDS
+endif
+endif
+
 # susfs's dev branch currently using post_execve_hook
 # but in other branch, it still direcctly call ksu_install_su_fd
 # to avoid install su fd repeatedly

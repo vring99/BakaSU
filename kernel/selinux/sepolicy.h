@@ -7,6 +7,7 @@
 
 int ksu_dup_policydb(struct policydb *old_db, struct policydb *new_db);
 void ksu_destroy_policydb(struct policydb *db);
+void ksu_susfs_record_policy(struct policydb *old_db, struct policydb *new_db);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || defined(KSU_COMPAT_HAS_POLICY_MUTEX)
 struct selinux_policy *ksu_dup_sepolicy(struct selinux_policy *old_pol);
