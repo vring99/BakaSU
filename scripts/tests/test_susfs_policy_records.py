@@ -30,6 +30,8 @@ class SusfsPolicyRecordsTests(unittest.TestCase):
         make = os.environ.get("MAKE") or shutil.which("make")
         self.assertIsNotNone(make, "Set MAKE to GNU make")
         source = (ROOT / "kernel/Kbuild").read_text()
+        manager = (ROOT / "manager/build.gradle.kts").read_text()
+        self.assertRegex(manager, r'extra\["managerVersionCode"\] = 35275\s*\n')
         assignments = "\n".join(re.findall(r"^KSU_VERSION\s*:=.*$", source, re.M))
         self.assertTrue(assignments)
         with tempfile.TemporaryDirectory() as directory:
