@@ -1,5 +1,30 @@
 # Pro 35275: SUSFS SELinux policy records
 
+## Follow-up: access query sequence
+
+On baihua running the corrected `gc539edccc5e8b` kernel, a read-only probe
+observed UID 10530 status read/mmap returning policyload 1 while an access
+query returned seqno 4. The same UID now rejects the new `ksu` context with
+EINVAL, confirming the earlier producer fix is active. These probes inherited
+the ksu SELinux domain. Switching to untrusted_app or isolated_app denied
+selinuxfs opens, so this does not reproduce Maple's full app-domain chain.
+Maple 2.3.0 visibly reported one KernelSU policy-load-sequence trait.
+
+The new SUSFS access consumer calls avd_init on the live policy and bypasses
+BakaSU's older access handler. BakaSU now wraps only the new consumer's access
+transaction, preserving its permission checks, errors and decision fields,
+and reports the policyload of the existing fake status page for app UIDs when
+the hide feature is running. Real policy generations, AVC reset and status
+notifications remain unchanged. Older SUSFS and non-SUSFS hooks are unchanged.
+Hook installation errors propagate; restoration errors are logged and the
+wrapper becomes a pass-through while the feature is disabled.
+
+The production response adapter and wrapper were compiled for ARM64 and run
+as an isolated test executable on baihua: success, denial, malformed response,
+UID gating, feature gating, absent page and non-default policyload cases pass.
+This is not a loaded-kernel regression. A new kernel build and authorized
+installation/reboot are still required before claiming Maple is fixed.
+
 The SUSFS 2.4 context/access query hooks consume type and original-allowed
 records. Pro 35275 previously detected the manual hooks but never populated
 these records. This does not imply that other SUSFS features failed.

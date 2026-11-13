@@ -69,7 +69,6 @@ __maybe_static struct page *fake_status = NULL;
 static struct mutex *ksu_selinux_status_lock = NULL;
 __maybe_static void initialize_fake_status();
 
-#ifndef KSU_COMPAT_HAS_SUSFS_FEATURE_SELINUX_HIDE
 enum sel_inos {
     SEL_ROOT_INO = 2,
     SEL_LOAD, /* load policy */
@@ -96,6 +95,7 @@ enum sel_inos {
 
 typedef ssize_t (*write_op_fn)(struct file *, char *, size_t);
 
+#ifndef KSU_COMPAT_HAS_SUSFS_FEATURE_SELINUX_HIDE
 static write_op_fn *selinux_write_op;
 
 #endif // #ifndef KSU_COMPAT_HAS_SUSFS_FEATURE_SELINUX_HIDE
@@ -666,6 +666,90 @@ extern void ksu_register_setprocattr_lsm_hook();
     } while (0)
 #endif // #ifndef KSU_COMPAT_HAS_SUSFS_FEATURE_SELINUX_HIDE
 
+#if defined(KSU_COMPAT_HAS_SUSFS_FEATURE_SELINUX_HIDE) && defined(KSU_COMPAT_HAS_SUSFS_SELINUX_POLICY_RECORDS)
+static write_op_fn *susfs_access_slot;
+static write_op_fn susfs_access_original;
+static bool susfs_access_hooked;
+
+/* Keep the SUSFS decision and error paths; only its userspace sequence field
+ * belongs to the same view as the status page. Never change latest_granting:
+ * real AVC invalidation must continue to observe every policy update.
+ */
+static ssize_t ksu_susfs_access_result(char *buf, ssize_t length, u32 policyload)
+{
+    unsigned int allowed, decided, auditallow, auditdeny, seqno, flags;
+
+    if (length <= 0)
+        return length;
+    if (sscanf(buf, "%x %x %x %x %u %x", &allowed, &decided, &auditallow, &auditdeny, &seqno, &flags) != 6)
+        return length;
+    return scnprintf(buf, SIMPLE_TRANSACTION_LIMIT, "%x %x %x %x %u %x", allowed, decided, auditallow, auditdeny,
+                     policyload, flags);
+}
+
+static ssize_t ksu_susfs_write_access(struct file *file, char *buf, size_t size)
+{
+    ssize_t length = susfs_access_original(file, buf, size);
+    struct page *page = READ_ONCE(fake_status);
+
+    if (length > 0 && ksu_get_uid_t(current_uid()) >= 10000 && READ_ONCE(ksu_selinux_hide_running) && page) {
+        struct selinux_kernel_status *status = page_address(page);
+
+        length = ksu_susfs_access_result(buf, length, READ_ONCE(status->policyload));
+    }
+    return length;
+}
+
+static int ksu_susfs_access_hook(void)
+{
+    write_op_fn replacement = ksu_susfs_write_access;
+    write_op_fn *ops;
+    int ret;
+
+    if (susfs_access_hooked)
+        return 0;
+#ifdef CONFIG_KALLSYMS_ALL
+    ops = (write_op_fn *)find_kernel_symbol_exact("write_op");
+#else
+    extern ssize_t (*const write_op[])(struct file *, char *, size_t);
+
+    ops = (write_op_fn *)&write_op;
+#endif
+    if (!ops || !ops[SEL_ACCESS])
+        return -ENOSYS;
+    susfs_access_slot = &ops[SEL_ACCESS];
+    susfs_access_original = READ_ONCE(*susfs_access_slot);
+    ret = ksu_patch_text(susfs_access_slot, &replacement, sizeof(replacement), KSU_PATCH_TEXT_FLUSH_DCACHE);
+    if (!ret)
+        susfs_access_hooked = true;
+    else
+        pr_err("selinux_hide: SUSFS access query hook failed: %d\n", ret);
+    return ret;
+}
+
+static void ksu_susfs_access_unhook(void)
+{
+    int ret;
+
+    if (!susfs_access_hooked)
+        return;
+    ret = ksu_patch_text(susfs_access_slot, &susfs_access_original, sizeof(susfs_access_original),
+                         KSU_PATCH_TEXT_FLUSH_DCACHE);
+    if (!ret)
+        susfs_access_hooked = false;
+    else
+        pr_err("selinux_hide: SUSFS access query restore failed: %d\n", ret);
+}
+#else
+static inline int ksu_susfs_access_hook(void)
+{
+    return 0;
+}
+static inline void ksu_susfs_access_unhook(void)
+{
+}
+#endif
+
 static int ksu_selinux_hide_enable()
 {
     int ret;
@@ -847,7 +931,7 @@ out:
 
 #endif // #ifndef KSU_COMPAT_HAS_SUSFS_FEATURE_SELINUX_HIDE
 
-    return 0;
+    return ksu_susfs_access_hook();
 
 #ifndef KSU_COMPAT_HAS_SUSFS_FEATURE_SELINUX_HIDE
 unhook:
@@ -860,6 +944,7 @@ static void ksu_selinux_hide_disable()
 {
     pr_info("selinux_hide: exit selinux hide\n");
 
+    ksu_susfs_access_unhook();
     ksu_selinux_hide_unhook();
 }
 
