@@ -29,6 +29,8 @@ BACKPORTED = {
     "kernel/selinux/selinux.h", "kernel/selinux/rules.c",
 }
 RETAINED = {
+    # Native old/new SUSFS API compatibility: docs/susfs-policy-records-35275.md.
+    "kernel/tools/susfs_compat.mk",
     "kernel/Kbuild", "kernel/Kconfig", "kernel/core/init.c",
     "kernel/manager/apk_sign.c", "kernel/manager/manager_sign.h",
     "kernel/supercall/dispatch.c", "kernel/supercall/internal.h",
