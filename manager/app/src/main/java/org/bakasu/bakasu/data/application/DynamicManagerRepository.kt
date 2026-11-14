@@ -35,8 +35,10 @@ class DynamicManagerRepository(
                     .mapNotNull { packageInfo ->
                         val nativeLibraryDir = packageInfo.nativeLibraryDir
                         if (nativeLibraryDir.isNullOrBlank() ||
-                            (!File(nativeLibraryDir, "libmuxinsu.so").isFile &&
-                                !File(nativeLibraryDir, "libksud.so").isFile)
+                            (
+                                !File(nativeLibraryDir, "libmuxinsu.so").isFile &&
+                                    !File(nativeLibraryDir, "libksud.so").isFile
+                                )
                         ) {
                             return@mapNotNull null
                         }
