@@ -2,6 +2,7 @@ package org.bakasu.bakasu.data.update
 
 import android.os.Build
 import android.util.Log
+import java.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.bakasu.bakasu.BuildConfig
@@ -19,13 +20,9 @@ class ManagerUpdateRepository(
         const val TAG = "ManagerUpdateRepository"
         val GITHUB_HEADERS = mapOf("Accept" to "application/vnd.github+json")
 
-        // sync with build.gradle.kts
-        const val CI_MANAGER_VERSION_CODE_OFFSET = 30000 + 700
         const val SHORT_SHA_LENGTH = 7
         const val UNIVERSAL_ABI = "universal"
     }
-
-    private val commitCountLinkPattern = Regex("""[?&]page=(\d+)>; rel="last"""")
 
     suspend fun checkStableUpdate(): ManagerUpdateInfo? = withContext(Dispatchers.IO) {
         val supportedAbis = Build.SUPPORTED_ABIS.toList()
@@ -64,8 +61,7 @@ class ManagerUpdateRepository(
         val headSha = run.optString("head_sha")
         if (runId <= 0L || headSha.isBlank()) return@withContext null
 
-        val commitCount = requestCommitCount(headSha) ?: return@withContext null
-        val versionCode = CI_MANAGER_VERSION_CODE_OFFSET + commitCount
+        val versionCode = requestManagerVersionCode(headSha) ?: return@withContext null
         if (versionCode <= currentVersionCode) return@withContext null
 
         val preferredAbi = supportedAbis.firstOrNull() ?: UNIVERSAL_ABI
@@ -112,24 +108,14 @@ class ManagerUpdateRepository(
         .mapCatching { JSONObject(it) }
         .getOrNull()
 
-    private suspend fun requestCommitCount(commitSha: String): Int? {
-        val url = ManagerUpdateSource.commitsUrl(commitSha)
-        val response = networkRequestRepository.request(
-            url = url,
-            headers = GITHUB_HEADERS,
-            forceNetwork = true,
-            callTimeoutSeconds = UPDATE_CALL_TIMEOUT_SECONDS,
-        ).getOrElse {
-            Log.w(TAG, "GitHub commit history request failed", it)
-            return null
-        }
-        return parseCommitCount(response.header("Link")) ?: 1
+    private suspend fun requestManagerVersionCode(commitSha: String): Int? {
+        val source = requestJson(ManagerUpdateSource.buildScriptUrl(commitSha)) ?: return null
+        if (source.optString("encoding") != "base64") return null
+        return runCatching {
+            val script = Base64.getMimeDecoder().decode(source.getString("content")).toString(Charsets.UTF_8)
+            ManagerUpdateSource.parseVersionCode(script)
+        }.onFailure { Log.w(TAG, "GitHub manager version read failed", it) }.getOrNull()
     }
-
-    internal fun parseCommitCount(linkHeader: String?): Int? = commitCountLinkPattern.find(linkHeader.orEmpty())
-        ?.groupValues
-        ?.getOrNull(1)
-        ?.toIntOrNull()
 
     private fun selectCandidate(
         candidates: List<ManagerApkCandidate>,

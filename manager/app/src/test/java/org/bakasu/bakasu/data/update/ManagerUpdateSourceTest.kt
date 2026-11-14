@@ -31,11 +31,30 @@ class ManagerUpdateSourceTest {
     }
 
     @Test
-    fun versionChecksUseTheSameRepository() {
+    fun versionChecksReadTheExactBuildSource() {
         assertEquals(
-            "https://api.github.com/repos/vring99/BakaSU/commits?sha=cc2e4f766b2ee411&per_page=1",
-            ManagerUpdateSource.commitsUrl("cc2e4f766b2ee411"),
+            "https://api.github.com/repos/vring99/BakaSU/contents/manager/build.gradle.kts?ref=cc2e4f766b2ee411",
+            ManagerUpdateSource.buildScriptUrl("cc2e4f766b2ee411"),
         )
+    }
+
+    @Test
+    fun maintenanceBuildKeepsDeclaredVersionDespiteMoreCommits() {
+        val script = """
+            extra["managerVersionCode"] = 35275
+            extra["managerVersionName"] = getGitDescribe()
+        """.trimIndent()
+        assertEquals(35275, ManagerUpdateSource.parseVersionCode(script))
+        assertEquals(35275, ManagerUpdateSource.parseVersionCode(script.replace("\n", "\r\n")))
+        assertEquals(35276, ManagerUpdateSource.parseVersionCode(script.replace("35275", "35276")))
+    }
+
+    @Test
+    fun unknownVersionExpressionsNeverBecomeGuessedUpdates() {
+        for (value in listOf("", "0", "-1", "9999999999999999", "getGitCommitCount() + 30700")) {
+            assertNull(value, ManagerUpdateSource.parseVersionCode("extra[\"managerVersionCode\"] = $value"))
+        }
+        assertNull(ManagerUpdateSource.parseVersionCode("// extra[\"managerVersionCode\"] = 35281"))
     }
 
     @Test

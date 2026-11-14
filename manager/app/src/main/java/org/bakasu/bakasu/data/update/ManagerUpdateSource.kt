@@ -21,7 +21,18 @@ internal object ManagerUpdateSource {
 
     fun artifactUrl(runId: Long): String = "https://nightly.link/$REPOSITORY/actions/runs/$runId/$RELEASE_ARTIFACT.zip"
 
-    fun commitsUrl(commitSha: String): String = "$API_URL/commits?sha=$commitSha&per_page=1"
+    private val managerVersionCodePattern = Regex(
+        """(?m)^extra\["managerVersionCode"\]\s*=\s*(\d+)\s*$""",
+    )
+
+    fun buildScriptUrl(commitSha: String): String = "$API_URL/contents/manager/build.gradle.kts?ref=$commitSha"
+
+    // Read the version from the exact successful build, never infer it from Git history.
+    fun parseVersionCode(buildScript: String): Int? = managerVersionCodePattern.find(buildScript)
+        ?.groupValues
+        ?.getOrNull(1)
+        ?.toIntOrNull()
+        ?.takeIf { it > 0 }
 
     fun parseApkName(fileName: String): ManagerApkName? {
         val match = managerApkPattern.matchEntire(fileName) ?: return null
