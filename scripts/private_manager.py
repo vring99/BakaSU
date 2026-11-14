@@ -161,7 +161,7 @@ def verify_apk(apk, package="", require_ksud=False):
         names = archive.namelist()
         if any(name.upper() == "META-INF/MANIFEST.MF" for name in names):
             raise ValueError("Kernel rejects APK v1 signatures")
-        if require_ksud and not any(re.fullmatch(r"lib/[^/]+/libksud\.so", name) for name in names):
+        if require_ksud and not any(re.fullmatch(r"lib/[^/]+/libmuxinsu\.so", name) for name in names):
             raise ValueError("Final APK is missing its ksud binary")
     java_binary = "java.exe" if os.name == "nt" else "java"
     java = Path(os.environ["JAVA_HOME"]) / "bin" / java_binary if "JAVA_HOME" in os.environ else Path(java_binary)

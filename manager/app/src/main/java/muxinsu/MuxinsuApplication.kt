@@ -1,4 +1,4 @@
-package org.bakasu.bakasu
+package muxinsu
 
 import android.app.Application
 import kotlinx.coroutines.Dispatchers
@@ -9,12 +9,12 @@ import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
 
-class KernelSUApplication : Application() {
+class MuxinsuApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         val koin = startKoin {
             androidLogger()
-            androidContext(this@KernelSUApplication)
+            androidContext(this@MuxinsuApplication)
             modules(appModules)
         }.koin
         runBlocking(Dispatchers.IO) {

@@ -53,7 +53,7 @@ class KsuCliRepository(context: Context) {
         return library.absolutePath
     }
 
-    fun getKsuDaemonPath(): String = getNativeLibraryPath("ksud")
+    fun getKsuDaemonPath(): String = getNativeLibraryPath("muxinsu")
 
     /** Shared shells belong to this repository; callers must not close them. */
     fun getRootShell(globalMnt: Boolean = false): Shell = synchronized(shellLock) {

@@ -40,8 +40,13 @@ RETAINED = {
     "manager/app/src/main/AndroidManifest.xml",
     "manager/app/src/main/cpp/jni.c", "manager/app/src/main/cpp/legacy.c",
     "manager/app/src/main/java/org/bakasu/bakasu/KernelSUApplication.kt",
+    # User-requested application entry rename; initialization is unchanged.
+    "manager/app/src/main/java/muxinsu/MuxinsuApplication.kt",
+    "manager/app/src/main/generated/baselineProfiles/baseline-prof.txt",
+    "manager/app/src/main/generated/baselineProfiles/startup-prof.txt",
     "manager/app/src/main/java/org/bakasu/bakasu/data/settings/SettingsPlatformRepository.kt",
     "manager/app/src/main/java/org/bakasu/bakasu/data/shell/KsuCli.kt",
+    "manager/app/src/main/java/org/bakasu/bakasu/data/application/DynamicManagerRepository.kt",
     "manager/app/src/main/java/org/bakasu/bakasu/data/shell/ManagerSignature.kt",
     "manager/app/src/main/java/org/bakasu/bakasu/data/update/ManagerUpdateRepository.kt",
     "manager/app/src/main/java/org/bakasu/bakasu/data/update/ManagerUpdateSource.kt",

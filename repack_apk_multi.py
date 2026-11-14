@@ -74,7 +74,7 @@ def process_single_apk(apk_path: Path, args: argparse.Namespace, out_dir: Path) 
             raise RuntimeError(
                 f"ksud binary not found for {apk_path.name} architecture(s): {', '.join(missing_in_apk)}"
             )
-        print(f"[WARN] {apk_path.name}: using existing libksud.so for {', '.join(missing_ksud_arches)}")
+        print(f"[WARN] {apk_path.name}: using existing libmuxinsu.so for {', '.join(missing_ksud_arches)}")
     
     # Generate output filename
     if args.output_name:
